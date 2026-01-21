@@ -13,8 +13,8 @@ public class ProductForm {
     @NotNull
     private String barcode;
     @NotBlank(message = "Email cannot be empty")
-    @Email(message = "Please provide a valid email address")
-    private String clientEmail;
+//    @Email(message = "Please provide a valid email address")
+    private String clientName;
     @NotNull
     private String name;
     @NotNull

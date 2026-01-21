@@ -10,36 +10,37 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/products")
+@RequestMapping("/api/product")
 public class ProductController {
 
     @Autowired
     private ProductDto productDto;
 
-    @PostMapping("/upload")
-    public void upload(@RequestBody List<ProductForm> forms) throws ApiException {
-        productDto.uploadTsv(forms);
-    }
-
-    @PostMapping
+    @RequestMapping(method = RequestMethod.POST)
     public void add(@RequestBody ProductForm form) throws ApiException {
         productDto.add(form);
     }
 
-    @GetMapping
-    public List<ProductData> getAll() throws ApiException {
-        return productDto.getAll();
+    @RequestMapping(method = RequestMethod.GET)
+    public List<ProductData> get(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String barcode,
+            @RequestParam(required = false) String clientName,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) throws ApiException {
+
+        // Note: Passing null for clientId as the UI uses clientName
+        //change name of this
+        return productDto.getProducts(name, barcode, null, clientName, page, size);
     }
 
-    @PutMapping("/{id}")
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void update(@PathVariable Integer id, @RequestBody ProductForm form) throws ApiException {
         productDto.update(id, form);
     }
 
-    @GetMapping
-    public List<ProductData> getAll(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String barcode) throws ApiException {
-        return productDto.getAllFiltered(name, barcode);
+    @RequestMapping(value = "/count", method = RequestMethod.GET)
+    public Long getCount() {
+        return productDto.getCount();
     }
 }

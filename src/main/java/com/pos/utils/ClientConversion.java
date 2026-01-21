@@ -3,12 +3,11 @@ package com.pos.utils;
 import com.pos.model.data.ClientData;
 import com.pos.model.form.ClientForm;
 import com.pos.pojo.ClientPojo;
-import org.springframework.stereotype.Component;
-//make the methods static and import that in dto
-@Component
-public class ClientConversion {
 
-    public ClientData convert(ClientPojo clientPojo) {
+public class ClientConversion {
+    //TODO function name change
+    public static ClientData convertFormToPojo(ClientPojo clientPojo) {
+        //if (clientPojo == null) return null;
         ClientData data = new ClientData();
         data.setId(clientPojo.getId());
         data.setName(clientPojo.getName());
@@ -16,10 +15,11 @@ public class ClientConversion {
         return data;
     }
 
-    public ClientPojo convert(ClientForm clientForm) {
+    public static ClientPojo convertFormToPojo(Integer id, ClientForm clientForm) {
         ClientPojo pojo = new ClientPojo();
         pojo.setName(clientForm.getName());
         pojo.setEmail(clientForm.getEmail());
+        pojo.setId(id);
         return pojo;
     }
 }

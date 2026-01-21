@@ -3,21 +3,20 @@ package com.pos.pojo;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.validator.constraints.URL;
 
 @Entity
+@Table(name = "Product")
 @Getter
 @Setter
 public class ProductPojo extends AbstractPojo {
 
-    // Overriding the ID to keep your IDENTITY strategy
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Integer id;
-    //indexing should be added here
-    @Column(nullable = false)
+
+    @Column(nullable = false, unique = true) // Barcode should be unique
     private String barcode;
-    //indexing good to have, composite, order sensitive
+
     @Column(nullable = false)
     private Integer clientId;
 

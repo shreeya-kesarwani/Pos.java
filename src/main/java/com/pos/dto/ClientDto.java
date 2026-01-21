@@ -9,27 +9,69 @@ import com.pos.utils.ClientConversion;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.validation.annotation.Validated;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
+@Validated
 public class ClientDto extends AbstractDto {
 
-    @Autowired private ClientService clientService;
-    @Autowired private ClientConversion clientConversion;
+    @Autowired
+    private ClientService clientService;
+    //TODO normalise me sirf form pass krna chahiye
+    //TODO later - return client data while doing ui
+    public void addClient(@Valid ClientForm clientForm) throws ApiException {
+        validateForm(clientForm);
+        //normalize(clientForm) --- should be like this, use reflections, template in the params
+        //clientForm.setName(normalize(clientForm.getName()));
+        //clientForm.setEmail(normalize(clientForm.getEmail()));
 
-    public void add(@Valid ClientForm clientForm) throws ApiException {
-        clientForm.setName(normalize(clientForm.getName()));
-        clientForm.setEmail(normalize(clientForm.getEmail()));
+        ClientPojo clientPojo = ClientConversion.convertFormToPojo(clientForm);
+        clientService.addClient(clientPojo);
+    }
+    //naming conventions
+    public void update(Integer id, ClientForm clientForm) throws ApiException {
+        validateForm(clientForm);
+//        normalize(form)
+//        clientForm.setName(normalize(clientForm.getName()));
+//        clientForm.setEmail(normalize(clientForm.getEmail()));
 
-        ClientPojo clientPojo = clientConversion.convert(clientForm);
-        clientService.add(clientPojo);
+        ClientPojo p = ClientConversion.convertFormToPojo(id, clientForm);
+        clientService.update(id, p);
     }
 
-    public List<ClientData> getAll() {
-        return clientService.getAll().stream()
-                .map(clientPojo -> clientConversion.convert(clientPojo))
+    // UNIFIED METHOD: Decides between Search (Full List) and Pagination (Chunked List)
+    public List<ClientData> getClients(Integer id, String name, String email, int page, int size) throws ApiException {
+        List<ClientPojo> pojos;
+
+//        if (isSearch(id, name, email)) {
+//            // When searching, we typically return all matches without pagination
+//            // to ensure the user finds exactly what they typed.
+//            pojos = clientService.getFiltered(id, normalize(name), normalize(email));
+//        } else {
+//            // When no search is active, we return the specific page requested.
+//            pojos = clientService.getPaged(page, size);
+//        }
+
+        pojos = clientService.getFiltered(id, normalize(name), normalize(email));
+        return pojos.stream()
+                .map(ClientConversion::convertFormToPojo)
                 .toList();
     }
+    //TODO make this private, public upper, private neeche
+    public Long getTotalClients() {
+        return clientService.getCount();
+    }
+
+    //TODO make this paginated
+    public List<ClientData> getAll() {
+        return clientService.getAll().stream()
+                .map(ClientConversion::convertFormToPojo)
+                .toList();
+    }
+//    // Logic Switch: Checks if any search parameters are actually filled
+//    private boolean isSearch(Integer id, String n, String e) {
+//        return id != null || (n != null && !n.isEmpty()) || (e != null && !e.isEmpty());
+//    }
 }
