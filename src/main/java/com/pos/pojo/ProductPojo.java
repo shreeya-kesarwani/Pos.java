@@ -26,5 +26,6 @@ public class ProductPojo extends AbstractPojo {
     @Column(nullable = false)
     private Double mrp;
 
+    @Column(nullable = true)
     private String imageUrl;
 }

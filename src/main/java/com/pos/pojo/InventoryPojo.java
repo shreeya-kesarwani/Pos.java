@@ -18,7 +18,6 @@ public class InventoryPojo extends AbstractPojo {
     @Column(nullable = false)
     private Integer quantity;
 }
-//remove pojo names
-//id, productid to be added
+
 //sep direcctory for api exception
 //app client exception - external comm

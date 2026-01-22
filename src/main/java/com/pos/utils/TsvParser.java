@@ -14,43 +14,49 @@ public class TsvParser {
     // Parses the TSV file into a list of ProductForms
     public static List<ProductForm> parseProductTsv(InputStream is) throws ApiException {
         List<ProductForm> forms = new ArrayList<>();
-        // Using try-with-resources to ensure the stream closes
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             String line;
             int lineNumber = 0;
 
             while ((line = reader.readLine()) != null) {
                 lineNumber++;
-                if (line.trim().isEmpty()) continue; // Skip empty lines
+                if (line.trim().isEmpty()) continue;
 
-                // Split line by tab character
+                // FIX: Skip the header row
+                if (lineNumber == 1 && line.toLowerCase().contains("barcode")) {
+                    continue;
+                }
+
                 String[] columns = line.split("\t");
 
-                // Expecting 5 columns: barcode, email, name, mrp, imageUrl
+                // Check for minimum required columns (Barcode, ClientName, Name, MRP)
                 if (columns.length < 4) {
-                    throw new ApiException("Error at line " + lineNumber + ": Missing columns. Expected barcode, email, name, mrp.");
+                    throw new ApiException("Error at line " + lineNumber + ": Missing columns. Expected barcode, clientName, name, mrp.");
                 }
 
                 ProductForm form = new ProductForm();
                 form.setBarcode(columns[0].trim());
-                form.setClientEmail(columns[1].trim());
+                form.setClientName(columns[1].trim());
                 form.setName(columns[2].trim());
 
                 try {
                     form.setMrp(Double.parseDouble(columns[3].trim()));
                 } catch (NumberFormatException e) {
-                    throw new ApiException("Error at line " + lineNumber + ": Invalid MRP value.");
+                    throw new ApiException("Error at line " + lineNumber + ": Invalid MRP value [" + columns[3] + "].");
                 }
 
-                // Image URL is optional in the 5th column
+                // Image URL is optional (5th column)
                 if (columns.length >= 5) {
-                    form.setImageUrl(columns[4].trim());
+                    String url = columns[4].trim();
+                    form.setImageUrl(url.isEmpty() ? null : url);
                 }
 
                 forms.add(form);
             }
+        } catch (ApiException e) {
+            throw e; // Re-throw our custom error
         } catch (Exception e) {
-            throw new ApiException("Failed to parse TSV file: " + e.getMessage());
+            throw new ApiException("Failed to parse Product TSV file: " + e.getMessage());
         }
         return forms;
     }
@@ -59,10 +65,16 @@ public class TsvParser {
         List<InventoryForm> forms = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
             String line;
+            int lineNumber = 0;
             while ((line = reader.readLine()) != null) {
+                lineNumber++;
                 if (line.trim().isEmpty()) continue;
+
+                // SKIP HEADER: If line 1 contains "barcode", skip it
+                if(lineNumber == 1 && line.toLowerCase().contains("barcode")) continue;
+
                 String[] columns = line.split("\t");
-                if (columns.length < 2) throw new ApiException("Invalid TSV format for Inventory");
+                if (columns.length < 2) throw new ApiException("Invalid columns at line " + lineNumber);
 
                 InventoryForm form = new InventoryForm();
                 form.setBarcode(columns[0].trim());
@@ -74,4 +86,5 @@ public class TsvParser {
         }
         return forms;
     }
+
 }

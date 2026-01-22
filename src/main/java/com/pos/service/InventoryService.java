@@ -9,55 +9,40 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 @Service
+@Transactional(rollbackFor = ApiException.class) // Pattern match: Class-level transactions
 public class InventoryService {
 
     @Autowired
     private InventoryDao inventoryDao;
 
-    @Transactional(rollbackFor = ApiException.class)
-    public void update(Integer productId, Integer quantity) throws ApiException {
-        InventoryPojo inventoryPojo = inventoryDao.selectByProductId(productId);
+    public void add(InventoryPojo p) {
+        // Simple insert as per minimalist requirement
+        inventoryDao.insert(p);
+    }
 
-        if (inventoryPojo == null) {
-            inventoryPojo = new InventoryPojo();
-            inventoryPojo.setProductId(productId);
-            inventoryPojo.setQuantity(quantity);
-            inventoryDao.insert(inventoryPojo);
-        } else {
-            inventoryPojo.setQuantity(quantity);
-            inventoryDao.update(inventoryPojo);
-        }
+    // Matches ProductService update pattern: no dao.update(), just setting values
+    public void update(Integer id, InventoryPojo p) throws ApiException {
+        InventoryPojo existing = getCheck(id);
+        existing.setQuantity(p.getQuantity());
     }
 
     @Transactional(readOnly = true)
-    public List<InventoryPojo> getAll() {
-        return inventoryDao.selectAll(InventoryPojo.class);
-    }
-
-    @Transactional(readOnly = true)
-    public InventoryPojo get(Integer productId) throws ApiException {
-        InventoryPojo inventoryPojo = inventoryDao.selectById(productId, InventoryPojo.class);
+    public InventoryPojo getCheck(Integer id) throws ApiException {
+        InventoryPojo inventoryPojo = inventoryDao.select(id, InventoryPojo.class);
         if (inventoryPojo == null) {
-            throw new ApiException("Inventory record missing for Product ID: " + productId);
+            throw new ApiException(String.format("Inventory record with ID %d does not exist", id));
         }
         return inventoryPojo;
-    }
-    @Transactional(readOnly = true)
-    public Integer getQuantitySafe(Integer id) {
-        try {
-            return get(id).getQuantity();
-        } catch (Exception exception) {
-            return 0;
-        }
-    }
-
-    @Transactional(readOnly = true)
-    public List<InventoryPojo> getPaged(int page, int size) {
-        return inventoryDao.selectAllPaged(InventoryPojo.class, page, size);
     }
 
     @Transactional(readOnly = true)
     public List<InventoryPojo> search(String barcode, String productName, String clientName) {
-        return inventoryDao.search(barcode, productName, clientName); //
+        return inventoryDao.search(barcode, productName, clientName);
+    }
+
+    // Matching the ProductService pattern of having a search-based count if needed
+    @Transactional(readOnly = true)
+    public Long getCount() {
+        return inventoryDao.count(InventoryPojo.class);
     }
 }

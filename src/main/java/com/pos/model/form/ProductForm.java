@@ -1,6 +1,8 @@
 package com.pos.model.form;
 
+import io.micrometer.common.lang.Nullable;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -12,13 +14,13 @@ import org.hibernate.validator.constraints.URL;
 public class ProductForm {
     @NotNull
     private String barcode;
-    @NotBlank(message = "Email cannot be empty")
-//    @Email(message = "Please provide a valid email address")
+    @NotBlank
     private String clientName;
     @NotNull
     private String name;
     @NotNull
     private Double mrp;
+
     @URL(message = "Please provide a valid URL")
     private String imageUrl;
 }

@@ -1,6 +1,7 @@
 package com.pos.dto;
 
 import com.pos.flow.ProductFlow;
+import com.pos.model.data.PaginatedResponse;
 import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
 import com.pos.pojo.ProductPojo;
@@ -22,53 +23,61 @@ public class ProductDto extends AbstractDto {
     @Autowired private ProductService productService;
 
     public void add(@Valid ProductForm f) throws ApiException {
-        f.setName(normalize(f.getName()));
-        f.setBarcode(normalize(f.getBarcode()));
-        f.setClientName(normalize(f.getClientName()));
+        validateForm(f);
+        normalize(f);
 
-        if (f.getMrp() != null && f.getMrp() <= 0) {
-            throw new ApiException("MRP must be a positive number");
-        }
+        validatePositive(f.getMrp(), "MRP");
 
-        ProductPojo p = ProductConversion.convert(f);
+        ProductPojo p = ProductConversion.convertFormToPojo(f);
         productFlow.add(p, f.getClientName());
     }
 
-    // BYPASS FLOW: Call Service directly for update
-    public void update(Integer id, ProductForm f) throws ApiException {
-        f.setName(normalize(f.getName()));
-        f.setBarcode(normalize(f.getBarcode()));
-        ProductPojo p = ProductConversion.convert(f);
-        productService.update(id, p);
+    public void update(String barcode, @Valid ProductForm f) throws ApiException {
+        validateForm(f);
+        normalize(f);
+        validatePositive(f.getMrp(), "MRP");
+
+        ProductPojo p = ProductConversion.convertFormToPojo(f);
+        productFlow.update(barcode, p, f.getClientName());
     }
 
-    public List<ProductData> getProducts(String name, String barcode, Integer clientId, String clientName, Integer page, Integer size) throws ApiException {
-        List<ProductPojo> pojos;
+    public PaginatedResponse<ProductData> getProducts(String name, String barcode, String clientName, Integer page, Integer size) throws ApiException {
+        int p = (page == null) ? 0 : page;
+        int s = (size == null) ? 10 : size;
 
-        if (isSearch(name, barcode, clientId, clientName)) {
-            // CALL FLOW: Search requires Client resolution
-            pojos = productFlow.getAllFiltered(normalize(name), normalize(barcode), clientId, normalize(clientName));
-        } else {
-            // BYPASS FLOW: Pagination only needs Product table
-            pojos = productService.getPaged(page, size);
-        }
+        String nName = normalize(name);
+        String nBarcode = normalize(barcode);
+        String nClientName = normalize(clientName);
 
-        return pojos.stream().map(this::toData).toList();
+        List<ProductPojo> pojos = productFlow.search(nName, nBarcode, nClientName, p, s);
+        List<ProductData> dataList = pojos.stream()
+                .map(pojo -> {
+                    try {
+                        String cName = productFlow.getClientName(pojo.getClientId());
+                        return ProductConversion.convertPojoToData(pojo.getId(), pojo, cName);
+                    } catch (ApiException e) {
+                        // Re-throw as a RuntimeException so the stream can handle it
+                        throw new RuntimeException(e);
+                    }
+                })
+                .toList();
+
+        return PaginatedResponse.of(dataList, productFlow.getCount(nName, nBarcode, nClientName), p);
     }
 
-    // BYPASS FLOW: Direct count
     public Long getCount() {
-        return productService.getCount();
+        return productService.getCount(null, null, null);
     }
 
-    private ProductData toData(ProductPojo p) {
-        ProductData d = ProductConversion.convert(p);
-        // CALL FLOW: Conversion needs Client Name from ClientService
-        d.setClientName(productFlow.getClientName(p.getClientId()));
-        return d;
-    }
+    public void addBulk(List<ProductForm> forms) throws ApiException {
+        for (ProductForm f : forms) {
+            // Reuse your existing logic for validation and normalization
+            validateForm(f);
+            normalize(f);
+            validatePositive(f.getMrp(), "MRP");
 
-    private boolean isSearch(String n, String b, Integer cId, String cName) {
-        return (n != null && !n.isEmpty()) || (b != null && !b.isEmpty()) || cId != null || (cName != null && !cName.isEmpty());
+            ProductPojo p = ProductConversion.convertFormToPojo(f);
+            productFlow.add(p, f.getClientName());
+        }
     }
 }

@@ -5,31 +5,51 @@ import java.lang.reflect.Field;
 
 public abstract class AbstractDto {
 
-    protected String normalize(String s) {
-        if (s == null) {
-            return null;
-        }
-        return s.trim();
-    }
+    protected <T> void normalize(T form) throws ApiException {
+        if (form == null) return;
 
-    // "check valid using reflections" - Logic to ensure no @NotBlank fields are null/empty
-    protected void validateForm(Object form) throws ApiException {
         for (Field field : form.getClass().getDeclaredFields()) {
-            field.setAccessible(true);
-            try {
-                Object value = field.get(form);
-                if (value == null || (value instanceof String && ((String) value).trim().isEmpty())) {
-                    throw new ApiException("Field " + field.getName() + " cannot be empty");
+            if (field.getType().equals(String.class)) {
+                try {
+                    field.setAccessible(true);
+                    String value = (String) field.get(form);
+                    if (value != null) {
+                        field.set(form, value.trim().toLowerCase());
+                    }
+                } catch (IllegalAccessException e) {
+                    throw new ApiException("Error during data normalization");
                 }
-            } catch (IllegalAccessException e) {
-                throw new ApiException("Validation error");
             }
         }
     }
 
-    public void validatePositive(Integer value, String message) throws ApiException { // Changed to public
-        if (value == null || value < 0) {
-            throw new ApiException(message + " cannot be negative");
+    protected void validateForm(Object form) throws ApiException {
+        if (form == null) throw new ApiException("Form cannot be null");
+
+        for (Field field : form.getClass().getDeclaredFields()) {
+            if (field.getName().equals("imageUrl")) {
+                continue;
+            }
+
+            field.setAccessible(true);
+            try {
+                Object value = field.get(form);
+                if (value == null || (value instanceof String && ((String) value).trim().isEmpty())) {
+                    throw new ApiException(String.format("Field [%s] cannot be empty", field.getName()));
+                }
+            } catch (IllegalAccessException e) {
+                throw new ApiException("Validation error occurred");
+            }
+        }
+    }
+
+    protected String normalize(String s) {
+        return (s == null) ? null : s.trim().toLowerCase();
+    }
+
+    protected void validatePositive(Double value, String fieldName) throws ApiException {
+        if (value == null || value <= 0) {
+            throw new ApiException(String.format("%s must be a positive number", fieldName));
         }
     }
 }

@@ -6,27 +6,31 @@ import com.pos.pojo.ProductPojo;
 
 public class ProductConversion {
 
-    // Method A: Pojo -> Data (Static)
-    public static ProductData convert(ProductPojo productPojo) {
-        if (productPojo == null) return null;
-        ProductData data = new ProductData();
-        data.setId(productPojo.getId());
-        data.setBarcode(productPojo.getBarcode());
-        data.setName(productPojo.getName());
-        data.setMrp(productPojo.getMrp());
-        data.setImageUrl(productPojo.getImageUrl());
-        // Note: quantity and clientName need to be set in Flow/Dto layers
-        return data;
+    // For CREATE: No ID yet
+    public static ProductPojo convertFormToPojo(ProductForm form) {
+        ProductPojo p = new ProductPojo();
+        p.setName(form.getName());
+        p.setBarcode(form.getBarcode());
+        p.setMrp(form.getMrp());
+        // clientId will be set by the Flow layer
+        // Explicitly check for empty or blank strings
+        if (form.getImageUrl() == null || form.getImageUrl().isBlank()) {
+            p.setImageUrl(null); // Force it to be null so the DB is happy
+        } else {
+            p.setImageUrl(form.getImageUrl());
+        }
+
+        return p;
     }
 
-    // Method B: Form -> Pojo (Static)
-    public static ProductPojo convert(ProductForm productForm) {
-        if (productForm == null) return null;
-        ProductPojo pojo = new ProductPojo();
-        pojo.setBarcode(productForm.getBarcode());
-        pojo.setName(productForm.getName());
-        pojo.setMrp(productForm.getMrp());
-        pojo.setImageUrl(productForm.getImageUrl());
-        return pojo;
+    // For DISPLAY: Pass ID explicitly as per your new Client pattern
+    public static ProductData convertPojoToData(Integer id, ProductPojo p, String clientName) {
+        ProductData d = new ProductData();
+        d.setId(id);
+        d.setName(p.getName());
+        d.setBarcode(p.getBarcode());
+        d.setMrp(p.getMrp());
+        d.setClientName(clientName); // Resolved from Flow layer
+        return d;
     }
 }

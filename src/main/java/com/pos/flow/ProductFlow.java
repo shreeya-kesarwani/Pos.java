@@ -16,35 +16,39 @@ import java.util.List;
 public class ProductFlow {
 
     @Autowired private ProductService productService;
-    @Autowired private ClientService clientService;
+    @Autowired private ClientService clientService; // Used only for add/update ID resolution
 
-    // KEEP: Orchestrates between Client and Product
     public void add(ProductPojo p, String clientName) throws ApiException {
-        List<ClientPojo> clients = clientService.getFiltered(null, clientName, null);
-        if (clients.isEmpty()) {
-            throw new ApiException("Client with name '" + clientName + "' does not exist");
-        }
-        p.setClientId(clients.get(0).getId());
+        p.setClientId(resolveClientId(clientName));
         productService.add(p);
     }
 
-    // KEEP: Needs ClientService to resolve name to ID for the search filter
-    @Transactional(readOnly = true)
-    public List<ProductPojo> getAllFiltered(String name, String barcode, Integer clientId, String clientName) throws ApiException {
-        if (clientId == null && clientName != null && !clientName.isEmpty()) {
-            List<ClientPojo> clients = clientService.getFiltered(null, clientName, null);
-            if (!clients.isEmpty()) {
-                clientId = clients.get(0).getId();
-            } else {
-                return List.of();
-            }
-        }
-        return productService.search(name, barcode, clientId);
+    public void update(String barcode, ProductPojo p, String clientName) throws ApiException {
+        p.setClientId(resolveClientId(clientName));
+        productService.update(barcode, p);
     }
 
-    // KEEP: DTO needs this to convert ID back to Name for display
     @Transactional(readOnly = true)
-    public String getClientName(Integer clientId) {
-        return clientService.getCheckById(clientId);
+    public List<ProductPojo> search(String name, String barcode, String clientName, int page, int size) {
+        // No longer calls clientService.search; DAO handles the join
+        return productService.search(name, barcode, clientName, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getCount(String name, String barcode, String clientName) {
+        return productService.getCount(name, barcode, clientName);
+    }
+
+    @Transactional(readOnly = true)
+    public String getClientName(Integer clientId) throws ApiException {
+        return (clientId == null) ? "N/A" : clientService.getCheckById(clientId).getName();
+    }
+
+    private Integer resolveClientId(String clientName) throws ApiException {
+        List<ClientPojo> clients = clientService.search(null, clientName, null, 0, 1);
+        if (clients.isEmpty()) {
+            throw new ApiException(String.format("Client [%s] does not exist", clientName));
+        }
+        return clients.get(0).getId();
     }
 }

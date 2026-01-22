@@ -3,72 +3,60 @@ package com.pos.service;
 import com.pos.dao.ProductDao;
 import com.pos.pojo.ProductPojo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
 @Service
+@Transactional(rollbackFor = ApiException.class) // Task 8: Class-level transactions
 public class ProductService {
 
     @Autowired
     private ProductDao productDao;
 
-    @Transactional(rollbackFor = ApiException.class)
     public void add(ProductPojo p) throws ApiException {
-        // Validation: Exact barcode check using our specialized DAO method
-        if (productDao.selectByBarcode(p.getBarcode()) != null) {
-            throw new ApiException("Product with this barcode already exists: " + p.getBarcode());
+        if (findByBarcode(p.getBarcode()) != null) {
+            throw new ApiException(String.format("Product with barcode [%s] already exists", p.getBarcode()));
         }
         productDao.insert(p);
     }
 
-    @Transactional(rollbackFor = ApiException.class)
-    public void update(Integer id, ProductPojo p) throws ApiException {
-        ProductPojo existing = getCheck(id);
+    public void update(String barcode, ProductPojo p) throws ApiException {
+        List<ProductPojo> results = productDao.search(null, barcode, null, 0, 1);
 
-        // Update all fields that are allowed to change
+        if (results.isEmpty()) {
+            throw new ApiException("Product with barcode [" + barcode + "] not found");
+        }
+        ProductPojo existing = results.get(0);
         existing.setName(p.getName());
         existing.setMrp(p.getMrp());
-        existing.setClientId(p.getClientId());
         existing.setImageUrl(p.getImageUrl());
-        // Note: Barcode is usually NOT allowed to change after creation to maintain order history
-
-        productDao.update(existing);
     }
 
-    // Change access modifier from public to protected
     @Transactional(readOnly = true)
-    protected ProductPojo getCheck(Integer id) throws ApiException {
-        ProductPojo productPojo = productDao.selectById(id, ProductPojo.class);
+    public ProductPojo getCheck(Integer id) throws ApiException {
+        ProductPojo productPojo = productDao.select(id, ProductPojo.class);
         if (productPojo == null) {
-            throw new ApiException("Product with ID " + id + " does not exist");
+            throw new ApiException(String.format("Product with ID %d does not exist", id));
         }
         return productPojo;
     }
+
     @Transactional(readOnly = true)
-    public List<ProductPojo> search(String name, String barcode, Integer clientId) {
-        return productDao.search(name, barcode, clientId);
+    public List<ProductPojo> search(String name, String barcode, String clientName, int page, int size) {
+        return productDao.search(name, barcode, clientName, page, size);
     }
 
     @Transactional(readOnly = true)
-    public ProductPojo getByBarcode(String barcode) throws ApiException {
-        ProductPojo p = productDao.selectByBarcode(barcode);
-        if (p == null) {
-            throw new ApiException("Product with barcode " + barcode + " not found");
-        }
-        return p;
+    public Long getCount(String name, String barcode, String clientName) {
+        return productDao.getCount(name, barcode, clientName);
     }
 
-    // Standard helpers for UI Tables
+    // Private validation helper
     @Transactional(readOnly = true)
-    public List<ProductPojo> getPaged(int page, int size) {
-        return productDao.selectAllPaged(ProductPojo.class, page, size);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getCount() {
-        return productDao.count(ProductPojo.class);
+    private ProductPojo findByBarcode(String barcode) {
+        List<ProductPojo> results = productDao.search(null, barcode, null, 0, 1);
+        return results.isEmpty() ? null : results.get(0);
     }
 }

@@ -7,11 +7,10 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Getter @Setter
-//abstract dto me hoga check valid, using reflections
 public class ClientForm {
     @NotBlank
     private String name;
     @NotBlank
-    @Email(message = "Please provide a valid email address") //--optional to have, know the implemention
+    @Email(message = "Please provide a valid email address")
     private String email;
 }
