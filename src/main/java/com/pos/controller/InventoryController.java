@@ -3,7 +3,7 @@ package com.pos.controller;
 import com.pos.dto.InventoryDto;
 import com.pos.model.data.InventoryData;
 import com.pos.model.form.InventoryForm;
-import com.pos.service.ApiException;
+import com.pos.exception.ApiException;
 import com.pos.utils.TsvParser;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;

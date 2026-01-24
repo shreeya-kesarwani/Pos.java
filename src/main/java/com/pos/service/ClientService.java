@@ -1,7 +1,8 @@
 package com.pos.service;
 
 import com.pos.dao.ClientDao;
-import com.pos.pojo.ClientPojo;
+import com.pos.exception.ApiException;
+import com.pos.pojo.Client;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,7 +15,7 @@ public class ClientService {
     @Autowired
     private ClientDao clientDao;
 
-    public void addClient(ClientPojo p) throws ApiException {
+    public void addClient(Client p) throws ApiException {
         if (getByName(p.getName()) != null) {
             throw new ApiException(String.format("Client [%s] already exists", p.getName()));
         }
@@ -22,13 +23,13 @@ public class ClientService {
     }
 
     // Replace your old update method with this one in ClientService.java
-    public void update(String name, ClientPojo p) throws ApiException {
-        ClientPojo existing = getByName(name);
+    public void update(String name, Client p) throws ApiException {
+        Client existing = getByName(name);
         if (existing == null) {
             throw new ApiException(String.format("Client with name [%s] does not exist", name));
         }
 
-        ClientPojo other = getByName(p.getName());
+        Client other = getByName(p.getName());
         if (other != null && !other.getId().equals(existing.getId())) {
             throw new ApiException(String.format("The name [%s] is already taken by another client", p.getName()));
         }
@@ -37,8 +38,8 @@ public class ClientService {
         existing.setEmail(p.getEmail());
     }
 
-    public ClientPojo getCheckById(Integer id) throws ApiException {
-        ClientPojo p = clientDao.select(id, ClientPojo.class);
+    public Client getCheckById(Integer id) throws ApiException {
+        Client p = clientDao.select(id, Client.class);
         if (p == null) {
             throw new ApiException(String.format("Client ID %d not found", id));
         }
@@ -46,7 +47,7 @@ public class ClientService {
     }
 
     @Transactional(readOnly = true)
-    public List<ClientPojo> search(Integer id, String name, String email, int page, int size) {
+    public List<Client> search(Integer id, String name, String email, int page, int size) {
         return clientDao.search(id, name, email, page, size);
     }
 
@@ -56,8 +57,8 @@ public class ClientService {
         return clientDao.getCount(id, name, email);
     }
 
-    private ClientPojo getByName(String name) {
-        List<ClientPojo> results = clientDao.search(null, name, null, 0, 1);
+    private Client getByName(String name) {
+        List<Client> results = clientDao.search(null, name, null, 0, 1);
         return results.isEmpty() ? null : results.get(0);
     }
 }

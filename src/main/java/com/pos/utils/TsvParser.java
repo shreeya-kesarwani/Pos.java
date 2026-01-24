@@ -2,7 +2,7 @@ package com.pos.utils;
 
 import com.pos.model.form.InventoryForm;
 import com.pos.model.form.ProductForm;
-import com.pos.service.ApiException;
+import com.pos.exception.ApiException;
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;

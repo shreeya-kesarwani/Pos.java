@@ -12,3 +12,5 @@ public class PosApplication {
         SpringApplication.run(PosApplication.class, args);
     }
 }
+
+//read about @valid in detail, implementation in detail

@@ -3,8 +3,8 @@ package com.pos.dto;
 import com.pos.flow.InventoryFlow;
 import com.pos.model.data.InventoryData;
 import com.pos.model.form.InventoryForm;
-import com.pos.pojo.InventoryPojo;
-import com.pos.service.ApiException;
+import com.pos.pojo.Inventory;
+import com.pos.exception.ApiException;
 import com.pos.utils.InventoryConversion; // Import your new converter
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -22,16 +22,16 @@ public class InventoryDto extends AbstractDto {
         for (InventoryForm f : forms) {
             validateForm(f);
             normalize(f);
-            InventoryPojo p = InventoryConversion.convertFormToPojo(f);
+            Inventory p = InventoryConversion.convertFormToPojo(f);
             inventoryFlow.addOrUpdate(f.getBarcode(), p);
         }
     }
 
     public List<InventoryData> getAll(String barcode, String productName, String clientName) throws ApiException {
-        List<InventoryPojo> pojos = inventoryFlow.search(barcode, productName, clientName);
+        List<Inventory> pojos = inventoryFlow.search(barcode, productName, clientName);
         List<InventoryData> dataList = new ArrayList<>();
 
-        for (InventoryPojo pojo : pojos) {
+        for (Inventory pojo : pojos) {
             // CHANGE 2: Get the metadata needed for the conversion via Flow
             String b = inventoryFlow.getBarcode(pojo.getProductId());
             String pName = inventoryFlow.getProductName(pojo.getProductId());

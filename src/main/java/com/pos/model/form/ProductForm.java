@@ -14,10 +14,14 @@ import org.hibernate.validator.constraints.URL;
 public class ProductForm {
     @NotNull
     private String barcode;
+
     @NotBlank
     private String clientName;
+
     @NotNull
     private String name;
+
+    @Min(value = 0)
     @NotNull
     private Double mrp;
 

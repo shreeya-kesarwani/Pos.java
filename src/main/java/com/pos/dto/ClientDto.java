@@ -3,8 +3,8 @@ package com.pos.dto;
 import com.pos.model.data.ClientData;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.ClientForm;
-import com.pos.pojo.ClientPojo;
-import com.pos.service.ApiException;
+import com.pos.pojo.Client;
+import com.pos.exception.ApiException;
 import com.pos.service.ClientService;
 import com.pos.utils.ClientConversion;
 import jakarta.validation.Valid;
@@ -23,14 +23,14 @@ public class ClientDto extends AbstractDto {
     public void addClient(@Valid ClientForm form) throws ApiException {
         validateForm(form);
         normalize(form);
-        ClientPojo pojo = ClientConversion.convertFormToPojo(form);
+        Client pojo = ClientConversion.convertFormToPojo(form);
         clientService.addClient(pojo);
     }
 
     public void update(String name, @Valid ClientForm form) throws ApiException {
         validateForm(form);
         normalize(form);
-        ClientPojo pojo = ClientConversion.convertFormToPojo(form);
+        Client pojo = ClientConversion.convertFormToPojo(form);
         clientService.update(name, pojo);
     }
 
@@ -41,7 +41,7 @@ public class ClientDto extends AbstractDto {
         String nName = normalize(name);
         String nEmail = normalize(email);
 
-        List<ClientPojo> pojos = clientService.search(id, nName, nEmail, p, s);
+        List<Client> pojos = clientService.search(id, nName, nEmail, p, s);
 
         // Task 2: Pass the clean strings to Count as well
         Long totalCount = clientService.getCount(id, nName, nEmail);

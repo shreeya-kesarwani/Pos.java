@@ -5,16 +5,18 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "Product")
 @Getter
 @Setter
-public class ProductPojo extends AbstractPojo {
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"barcode"})
+})
+public class Product extends AbstractPojo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Integer id;
 
-    @Column(nullable = false, unique = true) // Barcode should be unique
+    @Column(nullable = false)
     private String barcode;
 
     @Column(nullable = false)
@@ -26,6 +28,5 @@ public class ProductPojo extends AbstractPojo {
     @Column(nullable = false)
     private Double mrp;
 
-    @Column(nullable = true)
     private String imageUrl;
 }

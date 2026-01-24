@@ -5,12 +5,15 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "Inventory", uniqueConstraints = {
+@Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"productId"})
 })
 @Getter @Setter
-public class InventoryPojo extends AbstractPojo {
+public class Inventory extends AbstractPojo {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    protected Integer id;
     // Inherits primary ID from AbstractPojo
     @Column(nullable = false)
     private Integer productId;

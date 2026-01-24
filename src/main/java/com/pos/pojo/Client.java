@@ -5,12 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "Client", uniqueConstraints = {
+@Table(uniqueConstraints = {
         @UniqueConstraint(columnNames = {"name"})
 })
 @Getter
 @Setter
-public class ClientPojo extends AbstractPojo {
+public class Client extends AbstractPojo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Integer id;

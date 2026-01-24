@@ -4,7 +4,7 @@ import com.pos.dto.ProductDto;
 import com.pos.model.data.ProductData;
 import com.pos.model.data.PaginatedResponse; // New wrapper
 import com.pos.model.form.ProductForm;
-import com.pos.service.ApiException;
+import com.pos.exception.ApiException;
 import com.pos.utils.TsvParser;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
@@ -29,15 +29,11 @@ public class ProductController {
         productDto.add(form);
     }
 
-    // Change @ApiOperation to @Operation
     @Operation(summary = "Uploads products via TSV file")
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
-        // 1. Parse the TSV file
-        List<ProductForm> forms = TsvParser.parseProductTsv(file.getInputStream());
-
-        // 2. Call the bulk add method in your flow
-        productDto.addBulk(forms);
+        // Parsing logic moved to DTO layer as requested
+        productDto.addBulkFromTsv(file);
     }
 
     // SEARCH & LIST (Unified)

@@ -1,6 +1,6 @@
 package com.pos.dto;
 
-import com.pos.service.ApiException;
+import com.pos.exception.ApiException;
 import java.lang.reflect.Field;
 
 public abstract class AbstractDto {
@@ -14,7 +14,7 @@ public abstract class AbstractDto {
                     field.setAccessible(true);
                     String value = (String) field.get(form);
                     if (value != null) {
-                        field.set(form, value.trim().toLowerCase());
+                        field.set(form, value.trim());
                     }
                 } catch (IllegalAccessException e) {
                     throw new ApiException("Error during data normalization");
@@ -27,9 +27,9 @@ public abstract class AbstractDto {
         if (form == null) throw new ApiException("Form cannot be null");
 
         for (Field field : form.getClass().getDeclaredFields()) {
-            if (field.getName().equals("imageUrl")) {
-                continue;
-            }
+//            if (field.getName().equals("imageUrl")) {
+//                continue;
+//            }
 
             field.setAccessible(true);
             try {

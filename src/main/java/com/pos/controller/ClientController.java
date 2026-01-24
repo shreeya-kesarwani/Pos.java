@@ -4,7 +4,7 @@ import com.pos.dto.ClientDto;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.ClientForm;
 import com.pos.model.data.ClientData;
-import com.pos.service.ApiException;
+import com.pos.exception.ApiException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;

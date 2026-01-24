@@ -2,13 +2,13 @@ package com.pos.utils;
 
 import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
-import com.pos.pojo.ProductPojo;
+import com.pos.pojo.Product;
 
 public class ProductConversion {
 
     // For CREATE: No ID yet
-    public static ProductPojo convertFormToPojo(ProductForm form) {
-        ProductPojo p = new ProductPojo();
+    public static Product convertFormToPojo(ProductForm form) {
+        Product p = new Product();
         p.setName(form.getName());
         p.setBarcode(form.getBarcode());
         p.setMrp(form.getMrp());
@@ -24,7 +24,7 @@ public class ProductConversion {
     }
 
     // For DISPLAY: Pass ID explicitly as per your new Client pattern
-    public static ProductData convertPojoToData(Integer id, ProductPojo p, String clientName) {
+    public static ProductData convertPojoToData(Integer id, Product p, String clientName) {
         ProductData d = new ProductData();
         d.setId(id);
         d.setName(p.getName());
