@@ -2,9 +2,7 @@ package com.pos.controller;
 
 import com.pos.dto.InventoryDto;
 import com.pos.model.data.InventoryData;
-import com.pos.model.form.InventoryForm;
 import com.pos.exception.ApiException;
-import com.pos.utils.TsvParser;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -22,14 +20,13 @@ public class InventoryController {
     private InventoryDto inventoryDto;
 
     @Operation(summary = "Upload inventory via TSV")
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
-        List<InventoryForm> forms = TsvParser.parseInventoryTsv(file.getInputStream());
-        inventoryDto.upload(forms);
+        inventoryDto.upload(file);
     }
 
     @Operation(summary = "Get filtered inventory list")
-    @GetMapping
+    @RequestMapping(method = RequestMethod.GET)
     public List<InventoryData> get(
             @RequestParam(required = false) String barcode,
             @RequestParam(required = false) String productName,

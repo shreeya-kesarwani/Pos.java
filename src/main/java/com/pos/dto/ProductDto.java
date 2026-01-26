@@ -6,7 +6,7 @@ import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
 import com.pos.pojo.Product;
 import com.pos.exception.ApiException;
-import com.pos.service.ProductService;
+import com.pos.api.ProductApi;
 import com.pos.utils.ProductConversion;
 import com.pos.utils.TsvParser;
 import jakarta.validation.Valid;
@@ -24,7 +24,7 @@ import java.util.List;
 public class ProductDto extends AbstractDto {
 
     @Autowired private ProductFlow productFlow;
-    @Autowired private ProductService productService;
+    @Autowired private ProductApi productApi;
 
     public void add(@Valid ProductForm form) throws ApiException {
 //        validateForm(form);
@@ -36,27 +36,24 @@ public class ProductDto extends AbstractDto {
     }
 
     private void validateAndNormalize(ProductForm f) throws ApiException {
-        validateForm(f);
+        //validateForm(f);
         normalize(f);
         validatePositive(f.getMrp(), "MRP");
     }
 
     public void addBulkFromTsv(MultipartFile file) throws ApiException, IOException {
-        // 1. Parsing happens here in DTO now
         List<ProductForm> forms = TsvParser.parseProductTsv(file.getInputStream());
 
         List<Product> pojos = new ArrayList<>();
         List<String> clientNames = new ArrayList<>();
 
-        // 2. Collect everything into lists
         for (ProductForm f : forms) {
-            validateAndNormalize(f);
+            validateAndNormalize(f); // This handles the MRP positive check and nulls
             Product p = ProductConversion.convertFormToPojo(f);
             pojos.add(p);
             clientNames.add(f.getClientName());
         }
 
-        // 3. Hand off the lists to Flow for a single Transaction
         productFlow.addBulk(pojos, clientNames);
     }
 
@@ -82,11 +79,12 @@ public class ProductDto extends AbstractDto {
         List<ProductData> dataList = pojos.stream()
                 .map(pojo -> {
                     try {
+                        // Using getClientName from flow which handles the N/A logic
                         String cName = productFlow.getClientName(pojo.getClientId());
                         return ProductConversion.convertPojoToData(pojo.getId(), pojo, cName);
-                    } catch (ApiException e) {
-                        // Re-throw as a RuntimeException so the stream can handle it
-                        throw new RuntimeException(e);
+                    } catch (Exception e) {
+                        // If client is missing, we return data with "Unknown Client" instead of crashing the whole page
+                        return ProductConversion.convertPojoToData(pojo.getId(), pojo, "Unknown Client");
                     }
                 })
                 .toList();
@@ -95,7 +93,7 @@ public class ProductDto extends AbstractDto {
     }
 
     public Long getCount() {
-        return productService.getCount(null, null, null);
+        return productApi.getCount(null, null, null);
     }
 
     public void addBulk(List<ProductForm> forms) throws ApiException {

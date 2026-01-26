@@ -13,8 +13,10 @@ public class InventoryDao extends BaseDao {
     }
 
     public List<Inventory> search(String barcode, String productName, String clientName) {
-        String jpql = "SELECT i FROM InventoryPojo i JOIN ProductPojo p ON i.productId = p.id " +
-                "JOIN ClientPojo c ON p.clientId = c.id " +
+        // Ensure this says 'Inventory i' and 'Product p', NOT 'InventoryPojo'
+        String jpql = "SELECT i FROM Inventory i " +
+                "JOIN Product p ON i.productId = p.id " +
+                "JOIN Client c ON p.clientId = c.id " +
                 "WHERE (:barcode IS NULL OR p.barcode = :barcode) " +
                 "AND (:pName IS NULL OR p.name LIKE :pName) " +
                 "AND (:cName IS NULL OR c.name = :cName)";
@@ -27,7 +29,7 @@ public class InventoryDao extends BaseDao {
     }
 
     public Inventory selectByProductId(Integer productId) {
-        String jpql = "SELECT i FROM InventoryPojo i WHERE i.productId = :productId";
+        String jpql = "SELECT i FROM Inventory i WHERE i.productId = :productId";
         return em().createQuery(jpql, Inventory.class)
                 .setParameter("productId", productId)
                 .getResultList().stream().findFirst().orElse(null);

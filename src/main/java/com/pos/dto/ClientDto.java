@@ -1,11 +1,11 @@
 package com.pos.dto;
 
+import com.pos.api.ClientApi; // Renamed from ClientService
+import com.pos.exception.ApiException;
 import com.pos.model.data.ClientData;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.ClientForm;
-import com.pos.pojo.Client;
-import com.pos.exception.ApiException;
-import com.pos.service.ClientService;
+import com.pos.pojo.Client; // Ensure this is the correct POJO name
 import com.pos.utils.ClientConversion;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,19 +19,22 @@ import java.util.List;
 public class ClientDto extends AbstractDto {
 
     @Autowired
-    private ClientService clientService;
-    public void addClient(@Valid ClientForm form) throws ApiException {
-        validateForm(form);
+    private ClientApi clientApi;
+
+    public void add(@Valid ClientForm form) throws ApiException {
+        //validateForm(form);
         normalize(form);
+
         Client pojo = ClientConversion.convertFormToPojo(form);
-        clientService.addClient(pojo);
+        clientApi.add(pojo);
     }
 
     public void update(String name, @Valid ClientForm form) throws ApiException {
         validateForm(form);
         normalize(form);
+
         Client pojo = ClientConversion.convertFormToPojo(form);
-        clientService.update(name, pojo);
+        clientApi.update(name, pojo);
     }
 
     public PaginatedResponse<ClientData> getClients(Integer id, String name, String email, Integer page, Integer size) throws ApiException {
@@ -41,12 +44,10 @@ public class ClientDto extends AbstractDto {
         String nName = normalize(name);
         String nEmail = normalize(email);
 
-        List<Client> pojos = clientService.search(id, nName, nEmail, p, s);
+        List<Client> clients = clientApi.search(id, nName, nEmail, p, s);
+        Long totalCount = clientApi.getCount(id, nName, nEmail);
 
-        // Task 2: Pass the clean strings to Count as well
-        Long totalCount = clientService.getCount(id, nName, nEmail);
-
-        List<ClientData> dataList = pojos.stream()
+        List<ClientData> dataList = clients.stream()
                 .map(pojo -> ClientConversion.convertPojoToData(pojo.getId(), pojo))
                 .toList();
 
@@ -54,6 +55,6 @@ public class ClientDto extends AbstractDto {
     }
 
     public Long getTotalClients() {
-        return clientService.getCount(null,null,null);
+        return clientApi.getCount(null, null, null);
     }
 }

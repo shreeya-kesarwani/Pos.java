@@ -16,13 +16,12 @@ public class ClientController {
     @Autowired
     private ClientDto clientDto;
 
-    // CORRECT
     @RequestMapping(method = RequestMethod.POST)
     public void add(@Valid @RequestBody ClientForm clientForm) throws ApiException {
-        clientDto.addClient(clientForm);
+        clientDto.add(clientForm);
     }
 
-    // READ (Combined Search & GetAll)
+    // Combined Search & GetAll
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ClientData> getClients(
             @RequestParam(required = false) Integer id,
@@ -34,7 +33,7 @@ public class ClientController {
         return clientDto.getClients(id, name, email, page, size);
     }
 
-    // UPDATE
+    // UPDATE - using @PathVariable name to match your DTO signature
     @RequestMapping(value = "/{name}", method = RequestMethod.PUT)
     public void update(@PathVariable String name, @Valid @RequestBody ClientForm clientForm) throws ApiException {
         clientDto.update(name, clientForm);

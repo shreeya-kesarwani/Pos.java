@@ -1,4 +1,4 @@
-package com.pos.service;
+package com.pos.api;
 
 import com.pos.dao.ClientDao;
 import com.pos.exception.ApiException;
@@ -10,24 +10,49 @@ import java.util.List;
 
 @Service
 @Transactional(rollbackFor = ApiException.class)
-public class ClientService {
+public class ClientApi {
 
     @Autowired
     private ClientDao clientDao;
 
-    public void addClient(Client p) throws ApiException {
-        if (getByName(p.getName()) != null) {
-            throw new ApiException(String.format("Client [%s] already exists", p.getName()));
-        }
-        clientDao.insert(p);
+    // --- GET / GETCHECK PATTERN ---
+
+    public Client get(Integer id) {
+        return clientDao.select(id, Client.class);
     }
 
-    // Replace your old update method with this one in ClientService.java
-    public void update(String name, Client p) throws ApiException {
-        Client existing = getByName(name);
-        if (existing == null) {
+    public Client getCheck(Integer id) throws ApiException {
+        Client p = get(id);
+        if (p == null) {
+            throw new ApiException(String.format("Client ID %d does not exist", id));
+        }
+        return p;
+    }
+
+    public Client getByName(String name) {
+        List<Client> results = clientDao.search(null, name, null, 0, 1);
+        return results.isEmpty() ? null : results.get(0);
+    }
+
+    public Client getCheckByName(String name) throws ApiException {
+        Client p = getByName(name);
+        if (p == null) {
             throw new ApiException(String.format("Client with name [%s] does not exist", name));
         }
+        return p;
+    }
+
+    // --- CORE LOGIC ---
+
+    public void add(Client clientPojo) throws ApiException {
+        if (getByName(clientPojo.getName()) != null) {
+            throw new ApiException(String.format("Client [%s] already exists", clientPojo.getName()));
+        }
+        clientDao.insert(clientPojo);
+    }
+
+    public void update(String name, Client p) throws ApiException {
+        Client existing = getCheckByName(name);
 
         Client other = getByName(p.getName());
         if (other != null && !other.getId().equals(existing.getId())) {
@@ -38,27 +63,13 @@ public class ClientService {
         existing.setEmail(p.getEmail());
     }
 
-    public Client getCheckById(Integer id) throws ApiException {
-        Client p = clientDao.select(id, Client.class);
-        if (p == null) {
-            throw new ApiException(String.format("Client ID %d not found", id));
-        }
-        return p;
-    }
-
     @Transactional(readOnly = true)
     public List<Client> search(Integer id, String name, String email, int page, int size) {
         return clientDao.search(id, name, email, page, size);
     }
 
-    // UPDATED: Now accepts filters to provide a dynamic count for pagination
     @Transactional(readOnly = true)
     public Long getCount(Integer id, String name, String email) {
         return clientDao.getCount(id, name, email);
-    }
-
-    private Client getByName(String name) {
-        List<Client> results = clientDao.search(null, name, null, 0, 1);
-        return results.isEmpty() ? null : results.get(0);
     }
 }

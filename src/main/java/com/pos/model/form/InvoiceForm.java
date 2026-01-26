@@ -7,5 +7,5 @@ import java.util.List;
 @Getter @Setter
 public class InvoiceForm {
     private Integer orderId;
-    private List<InvoiceItem> items;
+    private List<InvoiceItemForm> items;
 }

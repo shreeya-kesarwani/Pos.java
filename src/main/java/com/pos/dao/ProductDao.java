@@ -9,7 +9,7 @@ import java.util.List;
 public class ProductDao extends BaseDao {
 
     public List<Product> search(String name, String barcode, String clientName, int page, int size) {
-        String jpql = "SELECT p FROM ProductPojo p JOIN ClientPojo c ON p.clientId = c.id " +
+        String jpql = "SELECT p FROM Product p JOIN Client c ON p.clientId = c.id " +
                 "WHERE (:name IS NULL OR p.name LIKE :name) " +
                 "AND (:barcode IS NULL OR p.barcode = :barcode) " +
                 "AND (:cName IS NULL OR c.name = :cName)";
@@ -24,7 +24,7 @@ public class ProductDao extends BaseDao {
     }
 
     public Long getCount(String name, String barcode, String clientName) {
-        String jpql = "SELECT COUNT(p) FROM ProductPojo p JOIN ClientPojo c ON p.clientId = c.id " +
+        String jpql = "SELECT COUNT(p) FROM Product p JOIN Client c ON p.clientId = c.id " +
                 "WHERE (:name IS NULL OR p.name LIKE :name) " +
                 "AND (:barcode IS NULL OR p.barcode = :barcode) " +
                 "AND (:cName IS NULL OR c.name = :cName)";
@@ -36,9 +36,8 @@ public class ProductDao extends BaseDao {
                 .getSingleResult();
     }
 
-    // THE BARCODE SCANNER METHOD
     public Product selectByBarcode(String barcode) {
-        String jpql = "SELECT p FROM ProductPojo p WHERE p.barcode = :barcode";
+        String jpql = "SELECT p FROM Product p WHERE p.barcode = :barcode";
         return em().createQuery(jpql, Product.class)
                 .setParameter("barcode", barcode)
                 .getResultList().stream().findFirst().orElse(null);

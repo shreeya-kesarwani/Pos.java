@@ -1,46 +1,59 @@
-//package com.pos.dao;
-//
-//import com.pos.model.data.OrderStatus;
-//import com.pos.pojo.OrderPojo;
-//import jakarta.persistence.criteria.*;
-//import org.springframework.stereotype.Repository;
-//
-//import java.time.ZonedDateTime;
-//import java.util.ArrayList;
-//import java.util.List;
-//
-//@Repository
-//public class OrderDao extends BaseDao {
-//
-//    public void insert(OrderPojo p) {
-//        em().persist(p);
-//    }
-//
-//    public OrderPojo select(Integer id) {
-//        return em().find(OrderPojo.class, id);
-//    }
-//
-//    public void update(OrderPojo p) {
-//        em().merge(p);
-//    }
-//
-//    public List<OrderPojo> search(Integer id,
-//                                  ZonedDateTime start,
-//                                  ZonedDateTime end,
-//                                  OrderStatus status) {
-//
-//        CriteriaBuilder cb = em().getCriteriaBuilder();
-//        CriteriaQuery<OrderPojo> cq = cb.createQuery(OrderPojo.class);
-//        Root<OrderPojo> root = cq.from(OrderPojo.class);
-//
-//        List<Predicate> predicates = new ArrayList<>();
-//
-//        if (id != null) predicates.add(cb.equal(root.get("id"), id));
-//        if (status != null) predicates.add(cb.equal(root.get("status"), status));
-//        if (start != null && end != null)
-//            predicates.add(cb.between(root.get("createdAt"), start, end));
-//
-//        cq.where(predicates.toArray(new Predicate[0]));
-//        return em().createQuery(cq).getResultList();
-//    }
-//}
+package com.pos.dao;
+
+import com.pos.model.data.OrderStatus;
+import com.pos.pojo.Order;
+import org.springframework.stereotype.Repository;
+
+import java.time.ZonedDateTime;
+import java.util.List;
+
+@Repository
+public class OrderDao extends BaseDao {
+
+    /**
+     * Insert new order
+     */
+    public void insert(Order order) {
+        em().persist(order);
+    }
+
+    /**
+     * Fetch order by ID
+     */
+    public Order select(Integer id) {
+        return em().find(Order.class, id);
+    }
+
+    /**
+     * Update order (status change)
+     */
+    public void update(Order order) {
+        em().merge(order);
+    }
+
+    /**
+     * Search orders by:
+     * - orderId (optional)
+     * - status (optional)
+     * - createdAt range (optional)
+     */
+    public List<Order> search(Integer id,
+                              ZonedDateTime start,
+                              ZonedDateTime end,
+                              OrderStatus status) {
+
+        String jpql =
+                "SELECT o FROM Order o WHERE " +
+                        "(:id IS NULL OR o.id = :id) " +
+                        "AND (:status IS NULL OR o.status = :status) " +
+                        "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end) " +
+                        "ORDER BY o.createdAt DESC";
+
+        return em().createQuery(jpql, Order.class)
+                .setParameter("id", id)
+                .setParameter("status", status)
+                .setParameter("start", start)
+                .setParameter("end", end)
+                .getResultList();
+    }
+}

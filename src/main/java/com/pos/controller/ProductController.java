@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.util.List;
 
 @RestController
-@RequestMapping("/products") // Conventionally plural and prefixed
+@RequestMapping("/products")
 public class ProductController {
 
     @Autowired
@@ -32,12 +32,10 @@ public class ProductController {
     @Operation(summary = "Uploads products via TSV file")
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
-        // Parsing logic moved to DTO layer as requested
         productDto.addBulkFromTsv(file);
     }
 
-    // SEARCH & LIST (Unified)
-    // Task 1: Return PaginatedResponse instead of List
+    // SEARCH & LIST
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ProductData> search(
             @RequestParam(required = false) String name,
@@ -45,19 +43,14 @@ public class ProductController {
             @RequestParam(required = false) String clientName,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size) throws ApiException {
-
-        // Fix 1: Use getProducts (matches your DTO)
-        // Fix 2: Passing parameters to getProducts ensures it returns the PaginatedResponse correctly
         return productDto.getProducts(name, barcode, clientName, page, size);
     }
 
-    // UPDATE
     @RequestMapping(value = "/{barcode}", method = RequestMethod.PUT)
     public void update(@PathVariable String barcode, @Valid @RequestBody ProductForm form) throws ApiException {
         productDto.update(barcode, form);
     }
 
-    // COUNT
     @RequestMapping(value = "/count", method = RequestMethod.GET)
     public Long getCount() {
         return productDto.getCount();

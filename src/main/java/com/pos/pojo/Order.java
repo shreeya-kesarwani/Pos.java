@@ -8,7 +8,7 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table
+@Table (name = "Orders")
 public class Order extends AbstractPojo {
 
     @Id

@@ -1,19 +1,18 @@
-//package com.pos.dao;
-//
-//import com.pos.pojo.InvoicePojo;
-//import org.springframework.stereotype.Repository;
-//import jakarta.persistence.TypedQuery;
-//
-//@Repository
-//public class InvoiceDao extends BaseDao {
-//    public void insert(InvoicePojo p) {
-//        em().persist(p);
-//    }
-//
-//    public InvoicePojo selectByOrderId(Integer orderId) {
-//        String hql = "select p from InvoicePojo p where orderId=:orderId";
-//        TypedQuery<InvoicePojo> query = em().createQuery(hql, InvoicePojo.class);
-//        query.setParameter("orderId", orderId);
-//        return query.getResultList().stream().findFirst().orElse(null);
-//    }
-//}
+package com.pos.dao;
+
+import com.pos.pojo.Invoice;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class InvoiceDao extends BaseDao {
+
+    public Invoice selectByOrderId(Integer orderId) {
+        String jpql = "SELECT i FROM Invoice i WHERE i.orderId = :orderId";
+        return em().createQuery(jpql, Invoice.class)
+                .setParameter("orderId", orderId)
+                .getResultList()
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+}

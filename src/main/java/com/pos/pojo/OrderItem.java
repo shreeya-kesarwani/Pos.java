@@ -15,7 +15,7 @@ public class OrderItem extends AbstractPojo {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     protected Integer id;
-    //composite of orderId and ProductId should be unique
+
     @Column(nullable = false)
     private Integer orderId;
 

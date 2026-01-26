@@ -2,14 +2,13 @@ package com.pos.dao;
 
 import com.pos.pojo.Client;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
 @Repository
 public class ClientDao extends BaseDao {
 
     public List<Client> search(Integer id, String name, String email, int page, int size) {
-        String jpql = "SELECT c FROM ClientPojo c WHERE (:id IS NULL OR c.id = :id) " +
+        String jpql = "SELECT c FROM Client c WHERE (:id IS NULL OR c.id = :id) " +
                 "AND (:name IS NULL OR c.name LIKE :name) " +
                 "AND (:email IS NULL OR c.email LIKE :email)";
 
@@ -23,7 +22,7 @@ public class ClientDao extends BaseDao {
     }
 
     public Long getCount(Integer id, String name, String email) {
-        String jpql = "SELECT COUNT(c) FROM ClientPojo c WHERE (:id IS NULL OR c.id = :id) " +
+        String jpql = "SELECT COUNT(c) FROM Client c WHERE (:id IS NULL OR c.id = :id) " +
                 "AND (:name IS NULL OR c.name LIKE :name) " +
                 "AND (:email IS NULL OR c.email LIKE :email)";
 
