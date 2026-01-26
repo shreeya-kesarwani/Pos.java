@@ -9,4 +9,5 @@ public class InvoiceData {
     private Integer id;
     private Integer orderId;
     private ZonedDateTime createdAt;
+    private String pdfPath;
 }
