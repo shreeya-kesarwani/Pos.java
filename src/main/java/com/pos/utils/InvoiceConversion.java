@@ -1,10 +1,8 @@
 package com.pos.utils;
 
 import com.pos.api.ProductApi;
-import com.pos.model.data.InvoiceData;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.InvoiceItemForm;
-import com.pos.pojo.Invoice;
 import com.pos.pojo.OrderItem;
 
 import java.util.ArrayList;

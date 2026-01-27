@@ -1,11 +1,11 @@
 package com.pos.dto;
 
-import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.flow.OrderFlow;
 import com.pos.model.data.OrderData;
 import com.pos.model.data.OrderItemData;
 import com.pos.model.data.PaginatedResponse;
+import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
 import com.pos.pojo.Order;
@@ -24,12 +24,9 @@ public class OrderDto extends AbstractDto {
     @Autowired
     private OrderFlow orderFlow;
 
-    @Autowired
-    private ProductApi productApi;
-
-    /**
-     * Create Order
-     */
+    // -------------------------------------------------
+    // CREATE ORDER
+    // -------------------------------------------------
     public Integer create(OrderForm form) throws ApiException {
 
         validateForm(form);
@@ -50,17 +47,18 @@ public class OrderDto extends AbstractDto {
                 throw new ApiException("quantity must be greater than zero");
             }
 
-            // ✅ helper usage
-            Integer productId = productApi.getIdByBarcode(f.getBarcode());
-
-            OrderItem item = OrderConversion.toOrderItemPojo(f, productId);
+            // ✅ DTO ONLY maps form → pojo
+            OrderItem item = OrderConversion.toOrderItemPojo(f, null);
             items.add(item);
         }
 
+        // ✅ ALL business logic happens in Flow
         return orderFlow.createOrder(items);
     }
 
-
+    // -------------------------------------------------
+    // SEARCH (PAGINATED)
+    // -------------------------------------------------
     public PaginatedResponse<OrderData> search(
             Integer id,
             ZonedDateTime start,
@@ -79,42 +77,26 @@ public class OrderDto extends AbstractDto {
         List<OrderData> data = new ArrayList<>();
 
         for (Order order : orders) {
-            List<OrderItem> items = orderFlow.getItems(order.getId());
-            Double totalAmount = OrderConversion.calculateTotalAmount(items);
-            OrderData d = OrderConversion.toOrderData(order, totalAmount);
+
+            Double totalAmount =
+                    orderFlow.calculateTotalAmount(order.getId());
+
+            OrderData d =
+                    OrderConversion.toOrderData(order, totalAmount);
+
             data.add(d);
         }
 
         return PaginatedResponse.of(data, totalCount, page);
     }
 
-    public List<OrderItemData> getItems(Integer orderId) throws ApiException {
+    // -------------------------------------------------
+    // ORDER ITEMS
+    // -------------------------------------------------
+    public List<OrderItemData> getItems(Integer orderId)
+            throws ApiException {
 
-        List<OrderItem> items = orderFlow.getItems(orderId);
-        List<OrderItemData> data = new ArrayList<>();
-
-        for (OrderItem item : items) {
-
-            Integer productId = item.getProductId();
-
-            String barcode = productApi.getBarcodeById(productId);
-            String productName = productApi.getNameById(productId);
-
-            OrderItemData d = OrderConversion.toOrderItemData(
-                    item,
-                    barcode,
-                    productName
-            );
-
-            data.add(d);
-        }
-
-        return data;
-    }
-
-
-
-    public void markInvoiced(Integer orderId) throws ApiException {
-        orderFlow.markOrderInvoiced(orderId);
+        // ✅ DTO does NOT call ProductApi
+        return orderFlow.getOrderItemData(orderId);
     }
 }

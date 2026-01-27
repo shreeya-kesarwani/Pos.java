@@ -1,7 +1,11 @@
 package com.pos.flow;
 
-import com.pos.api.*;
+import com.pos.api.InventoryApi;
+import com.pos.api.OrderApi;
+import com.pos.api.OrderItemApi;
+import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
+import com.pos.model.data.OrderItemData;
 import com.pos.model.data.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.InvoiceItemForm;
@@ -9,6 +13,7 @@ import com.pos.pojo.Inventory;
 import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
 import com.pos.pojo.Product;
+import com.pos.utils.OrderConversion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,46 +36,34 @@ public class OrderFlow {
     private InventoryApi inventoryApi;
 
     @Autowired
-    private InvoiceApi invoiceApi;
-
-    @Autowired
     private ProductApi productApi;
 
-    // -------------------------------------------------
-    // CREATE ORDER
-    // -------------------------------------------------
     public Integer createOrder(List<OrderItem> items) throws ApiException {
 
-        // 1️⃣ Create order
         Order order = orderApi.create();
 
-        // 2️⃣ Process items
         for (OrderItem item : items) {
 
             item.setOrderId(order.getId());
 
-            // ✅ Fetch product
-            Product product = productApi.getCheck(item.getProductId());
+            Product product =
+                    productApi.getCheck(item.getProductId());
 
-            // 🚨 BUSINESS RULE: sellingPrice <= MRP
             if (item.getSellingPrice() > product.getMrp()) {
                 throw new ApiException(
-                        String.format(
-                                "Selling price %.2f cannot be greater than MRP %.2f for product [%s]",
-                                item.getSellingPrice(),
-                                product.getMrp(),
-                                product.getName()
-                        )
+                        "Selling price cannot be greater than MRP for product: "
+                                + product.getName()
                 );
             }
 
-            // ✅ Inventory check
             Inventory inventory =
-                    inventoryApi.getByProductId(item.getProductId());
+                    inventoryApi.getByProductId(product.getId());
 
-            if (inventory == null || inventory.getQuantity() < item.getQuantity()) {
+            if (inventory == null ||
+                    inventory.getQuantity() < item.getQuantity()) {
                 throw new ApiException(
-                        "Insufficient inventory for productId: " + item.getProductId()
+                        "Insufficient inventory for productId: "
+                                + product.getId()
                 );
             }
 
@@ -85,10 +78,6 @@ public class OrderFlow {
         return order.getId();
     }
 
-
-    // -------------------------------------------------
-    // SEARCH (PAGINATED)
-    // -------------------------------------------------
     @Transactional(readOnly = true)
     public List<Order> search(
             Integer id,
@@ -99,10 +88,8 @@ public class OrderFlow {
             int size
     ) throws ApiException {
 
-        OrderStatus orderStatus = null;
-        if (status != null) {
-            orderStatus = OrderStatus.valueOf(status.toUpperCase());
-        }
+        OrderStatus orderStatus =
+                (status == null) ? null : OrderStatus.valueOf(status);
 
         return orderApi.search(id, start, end, orderStatus, page, size);
     }
@@ -113,43 +100,67 @@ public class OrderFlow {
             ZonedDateTime start,
             ZonedDateTime end,
             String status
-    ) throws ApiException {
+    ) {
 
-        OrderStatus orderStatus = null;
-        if (status != null) {
-            orderStatus = OrderStatus.valueOf(status.toUpperCase());
-        }
+        OrderStatus orderStatus =
+                (status == null) ? null : OrderStatus.valueOf(status);
 
         return orderApi.getCount(id, start, end, orderStatus);
     }
 
-    // -------------------------------------------------
-    // ORDER ITEMS
-    // -------------------------------------------------
     @Transactional(readOnly = true)
-    public List<OrderItem> getItems(Integer orderId) {
-        return orderItemApi.getByOrderId(orderId);
+    public List<OrderItemData> getOrderItemData(Integer orderId)
+            throws ApiException {
+
+        List<OrderItem> items =
+                orderItemApi.getByOrderId(orderId);
+
+        List<OrderItemData> data = new ArrayList<>();
+
+        for (OrderItem item : items) {
+
+            Product product =
+                    productApi.getCheck(item.getProductId());
+
+            data.add(
+                    OrderConversion.toOrderItemData(
+                            item,
+                            product.getBarcode(),
+                            product.getName()
+                    )
+            );
+        }
+
+        return data;
     }
 
-    // -------------------------------------------------
-    // INVOICE
-    // -------------------------------------------------
-    public void markOrderInvoiced(Integer orderId) throws ApiException {
+    @Transactional(readOnly = true)
+    public Double calculateTotalAmount(Integer orderId) {
 
-        // 1️⃣ Update order state
-        orderApi.updateStatus(orderId, OrderStatus.INVOICED);
+        List<OrderItem> items =
+                orderItemApi.getByOrderId(orderId);
 
-        // 2️⃣ Build invoice items
-        List<InvoiceItemForm> invoiceItems = buildInvoiceItems(orderId);
-
-        InvoiceForm invoiceForm = new InvoiceForm();
-        invoiceForm.setOrderId(orderId);
-        invoiceForm.setItems(invoiceItems);
-
-        // 3️⃣ Generate & persist invoice
-        invoiceApi.generateAndSaveInvoice(orderId, invoiceForm);
+        return OrderConversion.calculateTotalAmount(items);
     }
 
+    @Transactional(readOnly = true)
+    public InvoiceForm buildInvoiceForm(Integer orderId)
+            throws ApiException {
+
+        Order order = orderApi.getCheck(orderId);
+
+        if (order.getStatus() == OrderStatus.INVOICED) {
+            throw new ApiException("Order already invoiced");
+        }
+
+        InvoiceForm form = new InvoiceForm();
+        form.setOrderId(orderId);
+        form.setItems(buildInvoiceItems(orderId));
+
+        return form;
+    }
+
+    @Transactional(readOnly = true)
     private List<InvoiceItemForm> buildInvoiceItems(Integer orderId)
             throws ApiException {
 
@@ -173,4 +184,23 @@ public class OrderFlow {
 
         return invoiceItems;
     }
+
+    public void attachInvoice(Integer orderId, String path)
+            throws ApiException {
+
+        orderApi.attachInvoice(orderId, path);
+    }
+
+    public String getInvoicePath(Integer orderId) throws ApiException {
+
+        Order order = orderApi.getCheck(orderId);
+
+        if (order.getStatus() != OrderStatus.INVOICED) {
+            throw new ApiException("Invoice not generated yet");
+        }
+
+        return order.getInvoicePath();
+    }
+
+
 }

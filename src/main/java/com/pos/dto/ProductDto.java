@@ -27,18 +27,10 @@ public class ProductDto extends AbstractDto {
     @Autowired private ProductApi productApi;
 
     public void add(@Valid ProductForm form) throws ApiException {
-//        validateForm(form);
-        normalize(form);
-        validatePositive(form.getMrp(), "MRP");
+        validateAndNormalize(form);
 
         Product productPojo = ProductConversion.convertFormToPojo(form);
         productFlow.add(productPojo, form.getClientName());
-    }
-
-    private void validateAndNormalize(ProductForm f) throws ApiException {
-        //validateForm(f);
-        normalize(f);
-        validatePositive(f.getMrp(), "MRP");
     }
 
     public void addBulkFromTsv(MultipartFile file) throws ApiException, IOException {
@@ -107,4 +99,11 @@ public class ProductDto extends AbstractDto {
             productFlow.add(p, f.getClientName());
         }
     }
+
+    private void validateAndNormalize(ProductForm f) throws ApiException {
+        //validateForm(f);
+        normalize(f);
+        validatePositive(f.getMrp(), "MRP");
+    }
+
 }

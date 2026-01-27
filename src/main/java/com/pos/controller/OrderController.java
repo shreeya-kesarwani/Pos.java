@@ -1,7 +1,9 @@
 package com.pos.controller;
 
+import com.pos.dto.InvoiceDto;
 import com.pos.dto.OrderDto;
 import com.pos.exception.ApiException;
+import com.pos.model.data.InvoiceData;
 import com.pos.model.data.OrderData;
 import com.pos.model.data.OrderItemData;
 import com.pos.model.data.PaginatedResponse;
@@ -20,8 +22,12 @@ public class OrderController {
     @Autowired
     private OrderDto orderDto;
 
+    @Autowired
+    private InvoiceDto invoiceDto;
+
     @RequestMapping(method = RequestMethod.POST)
-    public Integer create(@RequestBody OrderForm form) throws ApiException {
+    public Integer create(@RequestBody OrderForm form)
+            throws ApiException {
         return orderDto.create(form);
     }
 
@@ -46,15 +52,26 @@ public class OrderController {
         return orderDto.search(id, start, end, status, page, size);
     }
 
+    @RequestMapping(
+            value = "/{orderId}/items",
+            method = RequestMethod.GET
+    )
+    public List<OrderItemData> getItems(
+            @PathVariable Integer orderId)
+            throws ApiException {
 
-    @RequestMapping(value = "/{orderId}/items", method = RequestMethod.GET)
-    public List<OrderItemData> getItems(@PathVariable Integer orderId) throws ApiException {
         return orderDto.getItems(orderId);
     }
 
-    @RequestMapping(value = "/{orderId}/invoice", method = RequestMethod.POST)
-    public void markInvoiced(@PathVariable Integer orderId) throws ApiException {
-        orderDto.markInvoiced(orderId);
-    }
+    @RequestMapping(
+            value = "/{orderId}/invoice",
+            method = RequestMethod.POST
+    )
+    public InvoiceData invoice(
+            @PathVariable Integer orderId)
+            throws ApiException {
 
+        return invoiceDto.generate(orderId);
+    }
 }
+

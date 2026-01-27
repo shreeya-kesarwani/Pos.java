@@ -10,8 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TsvParser {
-
-    // Parses the TSV file into a list of ProductForms
+    //TODO - see if somethings can be made as private method, refactor it, make it cleaner
     public static List<ProductForm> parseProductTsv(InputStream is) throws ApiException {
         List<ProductForm> forms = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(is))) {
@@ -30,6 +29,8 @@ public class TsvParser {
                 String[] columns = line.split("\t");
 
                 // Check for minimum required columns (Barcode, ClientName, Name, MRP)
+                //TODO instead of hardcoding the number, params me class jana chahiye(productForm.class), uske form se length lelo, using java reflections
+                //TODO - check the header names, if not matching, return error tsv and reject it
                 if (columns.length < 4) {
                     throw new ApiException("Error at line " + lineNumber + ": Missing columns. Expected barcode, clientName, name, mrp.");
                 }

@@ -6,8 +6,7 @@ import java.time.ZonedDateTime;
 
 @Getter @Setter
 public class InvoiceData {
-    private Integer id;
     private Integer orderId;
-    private ZonedDateTime createdAt;
-    private String pdfPath;
+    private String base64Pdf;
 }
+

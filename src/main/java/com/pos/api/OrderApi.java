@@ -56,4 +56,21 @@ public class OrderApi {
 
         return orderDao.getCount(id, start, end, status);
     }
+
+    public void attachInvoice(Integer orderId, String path)
+            throws ApiException {
+
+        Order order = getCheck(orderId);
+
+        if (order.getStatus() != OrderStatus.CREATED) {
+            throw new ApiException(
+                    "Invoice can only be generated for CREATED orders"
+            );
+        }
+
+        order.setInvoicePath(path);
+        order.setStatus(OrderStatus.INVOICED);
+
+        orderDao.update(order);
+    }
 }
