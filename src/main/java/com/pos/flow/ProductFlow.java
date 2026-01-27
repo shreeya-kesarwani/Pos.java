@@ -40,9 +40,14 @@ public class ProductFlow {
 
     @Transactional(readOnly = true)
     public String getClientName(Integer clientId) throws ApiException {
-        //TODO: if clientId is null throw exception, remove N/A
-        return (clientId == null) ? "N/A" : clientApi.getCheck(clientId).getName();
+
+        if (clientId == null) {
+            throw new ApiException("Client ID is missing for product");
+        }
+
+        return clientApi.getCheck(clientId).getName();
     }
+
 
     private Integer getClientIdByName(String clientName) throws ApiException {
         Client client = clientApi.getCheckByName(clientName);

@@ -35,11 +35,6 @@ public class InvoiceController {
 
 }
 
-    //TODO get method missing to download the invoice
-    //TODO base64 should be converted to pdf and stored in this repo
-    //TODO in get is status == created, api exception that not invoiced yet, if invoiced then take path from order pojo and return the invoice pdf
-
-
 
 
 
