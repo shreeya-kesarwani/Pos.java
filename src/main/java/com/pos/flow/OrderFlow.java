@@ -191,16 +191,8 @@ public class OrderFlow {
         orderApi.attachInvoice(orderId, path);
     }
 
-    public String getInvoicePath(Integer orderId) throws ApiException {
-
-        Order order = orderApi.getCheck(orderId);
-
-        if (order.getStatus() != OrderStatus.INVOICED) {
-            throw new ApiException("Invoice not generated yet");
-        }
-
-        return order.getInvoicePath();
+    @Transactional(readOnly = true)
+    public Order getOrder(Integer orderId) throws ApiException {
+        return orderApi.getCheck(orderId);
     }
-
-
 }
