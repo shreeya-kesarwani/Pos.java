@@ -44,11 +44,27 @@ public class OrderFlow {
         // 1️⃣ Create order
         Order order = orderApi.create();
 
-        // 2️⃣ Process each item
+        // 2️⃣ Process items
         for (OrderItem item : items) {
 
             item.setOrderId(order.getId());
 
+            // ✅ Fetch product
+            Product product = productApi.getCheck(item.getProductId());
+
+            // 🚨 BUSINESS RULE: sellingPrice <= MRP
+            if (item.getSellingPrice() > product.getMrp()) {
+                throw new ApiException(
+                        String.format(
+                                "Selling price %.2f cannot be greater than MRP %.2f for product [%s]",
+                                item.getSellingPrice(),
+                                product.getMrp(),
+                                product.getName()
+                        )
+                );
+            }
+
+            // ✅ Inventory check
             Inventory inventory =
                     inventoryApi.getByProductId(item.getProductId());
 
@@ -68,6 +84,7 @@ public class OrderFlow {
 
         return order.getId();
     }
+
 
     // -------------------------------------------------
     // SEARCH (PAGINATED)
