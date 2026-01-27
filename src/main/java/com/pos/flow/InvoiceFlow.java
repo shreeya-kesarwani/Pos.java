@@ -29,7 +29,7 @@ public class InvoiceFlow {
     private InvoiceApi invoiceApi;
 
     public InvoiceData generate(Integer orderId, InvoiceForm form) {
-        return invoiceApi.generateInvoice(orderId, form);
+        return invoiceApi.generateAndSaveInvoice(orderId, form);
     }
 }
 

@@ -37,10 +37,32 @@ public class OrderDao extends BaseDao {
      * - status (optional)
      * - createdAt range (optional)
      */
+//    public List<Order> search(Integer id,
+//                              ZonedDateTime start,
+//                              ZonedDateTime end,
+//                              OrderStatus status) {
+//
+//        String jpql =
+//                "SELECT o FROM Order o WHERE " +
+//                        "(:id IS NULL OR o.id = :id) " +
+//                        "AND (:status IS NULL OR o.status = :status) " +
+//                        "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end) " +
+//                        "ORDER BY o.createdAt DESC";
+//
+//        return em().createQuery(jpql, Order.class)
+//                .setParameter("id", id)
+//                .setParameter("status", status)
+//                .setParameter("start", start)
+//                .setParameter("end", end)
+//                .getResultList();
+//    }
+
     public List<Order> search(Integer id,
                               ZonedDateTime start,
                               ZonedDateTime end,
-                              OrderStatus status) {
+                              OrderStatus status,
+                              int page,
+                              int size) {
 
         String jpql =
                 "SELECT o FROM Order o WHERE " +
@@ -54,6 +76,28 @@ public class OrderDao extends BaseDao {
                 .setParameter("status", status)
                 .setParameter("start", start)
                 .setParameter("end", end)
+                .setFirstResult(page * size)   // ✅ pagination
+                .setMaxResults(size)           // ✅ pagination
                 .getResultList();
     }
+
+    public Long getCount(Integer id,
+                         ZonedDateTime start,
+                         ZonedDateTime end,
+                         OrderStatus status) {
+
+        String jpql =
+                "SELECT COUNT(o) FROM Order o WHERE " +
+                        "(:id IS NULL OR o.id = :id) " +
+                        "AND (:status IS NULL OR o.status = :status) " +
+                        "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end)";
+
+        return em().createQuery(jpql, Long.class)
+                .setParameter("id", id)
+                .setParameter("status", status)
+                .setParameter("start", start)
+                .setParameter("end", end)
+                .getSingleResult();
+    }
+
 }

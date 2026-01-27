@@ -1,13 +1,8 @@
 package com.pos.api;
 
-import com.pos.dao.InvoiceDao;
 import com.pos.dao.OrderDao;
 import com.pos.exception.ApiException;
 import com.pos.model.data.OrderStatus;
-import com.pos.model.data.InvoiceData;
-import com.pos.model.form.InvoiceForm;
-import com.pos.model.form.InvoiceItemForm;
-import com.pos.pojo.Invoice;
 import com.pos.pojo.Order;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -20,12 +15,6 @@ public class OrderApi {
 
     @Autowired
     private OrderDao orderDao;
-
-    @Autowired
-    private InvoiceApi invoiceApi;
-
-    @Autowired
-    private InvoiceDao invoiceDao;
 
     public Order create() {
         Order order = new Order();
@@ -46,41 +35,25 @@ public class OrderApi {
         Order order = getCheck(orderId);
         order.setStatus(status);
         orderDao.update(order);
-
-        // ✅ Generate invoice ONLY when order is completed
-        if (status == OrderStatus.CREATED) {
-
-            List<InvoiceItemForm> invoiceItems = buildInvoiceItems(orderId);
-
-            InvoiceForm invoiceForm = new InvoiceForm();
-            invoiceForm.setOrderId(orderId);
-            invoiceForm.setItems(invoiceItems);
-
-            InvoiceData invoiceData =
-                    invoiceApi.generateInvoice(orderId, invoiceForm);
-
-
-            Invoice invoice = new Invoice();
-            invoice.setOrderId(invoiceData.getOrderId());
-            invoice.setPath(invoiceData.getPdfPath());
-
-            invoiceDao.insert(invoice);
-        }
     }
 
-    public List<Order> search(Integer id,
-                              ZonedDateTime start,
-                              ZonedDateTime end,
-                              OrderStatus status) {
-        return orderDao.search(id, start, end, status);
+    public List<Order> search(
+            Integer id,
+            ZonedDateTime start,
+            ZonedDateTime end,
+            OrderStatus status,
+            int page,
+            int size) {
+
+        return orderDao.search(id, start, end, status, page, size);
     }
 
-    // 🔧 Helper: map order items → invoice items
-    private List<InvoiceItemForm> buildInvoiceItems(Integer orderId) {
-        // TODO:
-        // 1. Fetch order items using orderId
-        // 2. Map them to InvoiceItemForm
-        // 3. Return the list
-        return List.of(); // replace with real implementation
+    public Long getCount(
+            Integer id,
+            ZonedDateTime start,
+            ZonedDateTime end,
+            OrderStatus status) {
+
+        return orderDao.getCount(id, start, end, status);
     }
 }
