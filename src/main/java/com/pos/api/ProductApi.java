@@ -16,20 +16,16 @@ public class ProductApi {
     @Autowired
     private ProductDao productDao;
 
-    // -------------------------------------------------
-    // BASIC GET / GET-CHECK
-    // -------------------------------------------------
-
     public Product get(Integer id) {
         return productDao.select(id, Product.class);
     }
 
     public Product getCheck(Integer id) throws ApiException {
-        Product p = get(id);
-        if (p == null) {
+        Product product = get(id);
+        if (product == null) {
             throw new ApiException(String.format("Product with ID %d does not exist", id));
         }
-        return p;
+        return product;
     }
 
     public Product getByBarcode(String barcode) {
@@ -37,59 +33,41 @@ public class ProductApi {
     }
 
     public Product getCheckByBarcode(String barcode) throws ApiException {
-        Product p = getByBarcode(barcode);
-        if (p == null) {
+        Product product = getByBarcode(barcode);
+        if (product == null) {
             throw new ApiException(String.format("Product with barcode [%s] not found", barcode));
         }
-        return p;
+        return product;
     }
 
-    // -------------------------------------------------
-    // ✅ HELPERS (barcode ↔ productId)
-    // -------------------------------------------------
-
-    /**
-     * Resolve barcode → productId
-     */
     public Integer getIdByBarcode(String barcode) throws ApiException {
-        Product p = getCheckByBarcode(barcode);
-        return p.getId();
+        Product product = getCheckByBarcode(barcode);
+        return product.getId();
     }
 
-    /**
-     * Resolve productId → barcode
-     */
     public String getBarcodeById(Integer productId) throws ApiException {
-        Product p = getCheck(productId);
-        return p.getBarcode();
+        Product product = getCheck(productId);
+        return product.getBarcode();
     }
 
-    /**
-     * Resolve productId → product name
-     */
     public String getNameById(Integer productId) throws ApiException {
-        Product p = getCheck(productId);
-        return p.getName();
+        Product product = getCheck(productId);
+        return product.getName();
     }
 
-    // -------------------------------------------------
-    // CORE LOGIC
-    // -------------------------------------------------
-
-    public void add(Product p) throws ApiException {
-        if (getByBarcode(p.getBarcode()) != null) {
+    public void add(Product product) throws ApiException {
+        if (getByBarcode(product.getBarcode()) != null) {
             throw new ApiException(
-                    String.format("Product with barcode [%s] already exists", p.getBarcode())
+                    String.format("Product with barcode [%s] already exists", product.getBarcode())
             );
         }
-        productDao.insert(p);
+        productDao.insert(product);
     }
 
-    public void update(String barcode, Product p) throws ApiException {
+    public void update(String barcode, Product product) throws ApiException {
         Product existing = getCheckByBarcode(barcode);
-        existing.setName(p.getName());
-        existing.setMrp(p.getMrp());
-        // add other mutable fields if needed
+        existing.setName(product.getName());
+        existing.setMrp(product.getMrp());
     }
 
     @Transactional(readOnly = true)

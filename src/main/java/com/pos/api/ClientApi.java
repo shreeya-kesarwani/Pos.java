@@ -15,18 +15,16 @@ public class ClientApi {
     @Autowired
     private ClientDao clientDao;
 
-    // --- GET / GETCHECK PATTERN ---
-
     public Client get(Integer id) {
         return clientDao.select(id, Client.class);
     }
 
     public Client getCheck(Integer id) throws ApiException {
-        Client p = get(id);
-        if (p == null) {
+        Client client = get(id);
+        if (client == null) {
             throw new ApiException(String.format("Client ID %d does not exist", id));
         }
-        return p;
+        return client;
     }
 
     public Client getByName(String name) {
@@ -35,14 +33,12 @@ public class ClientApi {
     }
 
     public Client getCheckByName(String name) throws ApiException {
-        Client p = getByName(name);
-        if (p == null) {
+        Client client = getByName(name);
+        if (client == null) {
             throw new ApiException(String.format("Client with name [%s] does not exist", name));
         }
-        return p;
+        return client;
     }
-
-    // --- CORE LOGIC ---
 
     public void add(Client clientPojo) throws ApiException {
         if (getByName(clientPojo.getName()) != null) {

@@ -1,9 +1,17 @@
 package com.pos.dto;
 
 import com.pos.exception.ApiException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import java.lang.reflect.Field;
+import java.util.Set;
 
 public abstract class AbstractDto {
+
+    @Autowired
+    private Validator validator;
 
     protected <T> void normalize(T form) throws ApiException {
         if (form == null) return;
@@ -23,33 +31,16 @@ public abstract class AbstractDto {
         }
     }
 
-    protected void validateForm(Object form) throws ApiException {
-        if (form == null) throw new ApiException("Form cannot be null");
-
-        for (Field field : form.getClass().getDeclaredFields()) {
-//            if (field.getName().equals("imageUrl")) {
-//                continue;
-//            }
-
-            field.setAccessible(true);
-            try {
-                Object value = field.get(form);
-                if (value == null || (value instanceof String && ((String) value).trim().isEmpty())) {
-                    throw new ApiException(String.format("Field [%s] cannot be empty", field.getName()));
-                }
-            } catch (IllegalAccessException e) {
-                throw new ApiException("Validation error occurred");
-            }
-        }
+    protected String normalize(String string) {
+        return (string == null) ? null : string.trim().toLowerCase();
     }
 
-    protected String normalize(String s) {
-        return (s == null) ? null : s.trim().toLowerCase();
-    }
-
-    protected void validatePositive(Double value, String fieldName) throws ApiException {
-        if (value == null || value <= 0) {
-            throw new ApiException(String.format("%s must be a positive number", fieldName));
+    protected <T> void validateOrThrow(T obj) throws ApiException {
+        Set<ConstraintViolation<T>> violations = validator.validate(obj);
+        if (!violations.isEmpty()) {
+            throw new ApiException(
+                    violations.iterator().next().getMessage()
+            );
         }
     }
 }

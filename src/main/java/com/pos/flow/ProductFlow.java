@@ -48,19 +48,18 @@ public class ProductFlow {
         return clientApi.getCheck(clientId).getName();
     }
 
-
     private Integer getClientIdByName(String clientName) throws ApiException {
         Client client = clientApi.getCheckByName(clientName);
         return client.getId();
     }
 
-    public void addBulk(List<Product> pojos, List<String> clientNames) throws ApiException {
-        for (int i = 0; i < pojos.size(); i++) {
-            Product p = pojos.get(i);
-            String clientName = clientNames.get(i);
+    public void addBulk(List<Product> products, List<String> clientNames) throws ApiException {
+        for (int product_index = 0; product_index < products.size(); product_index++) {
+            Product product = products.get(product_index);
+            String clientName = clientNames.get(product_index);
 
-            p.setClientId(getClientIdByName(clientName));
-            productApi.add(p);
+            product.setClientId(getClientIdByName(clientName));
+            productApi.add(product);
         }
     }
 }

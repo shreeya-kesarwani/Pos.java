@@ -20,11 +20,11 @@ public class InventoryApi {
     }
 
     public Inventory getCheck(Integer id) throws ApiException {
-        Inventory p = get(id);
-        if (p == null) {
+        Inventory inventory = get(id);
+        if (inventory == null) {
             throw new ApiException(String.format("Inventory record ID %d not found", id));
         }
-        return p;
+        return inventory;
     }
 
     public Inventory getByProductId(Integer productId) {
@@ -32,20 +32,20 @@ public class InventoryApi {
     }
 
     public Inventory getCheckByProductId(Integer productId) throws ApiException {
-        Inventory p = getByProductId(productId);
-        if (p == null) {
+        Inventory inventory = getByProductId(productId);
+        if (inventory == null) {
             throw new ApiException(String.format("Inventory for Product ID %d not found", productId));
         }
-        return p;
+        return inventory;
     }
 
-    public void add(Inventory p) {
-        inventoryDao.insert(p);
+    public void add(Inventory inventory) {
+        inventoryDao.insert(inventory);
     }
 
-    public void update(Integer id, Inventory p) throws ApiException {
+    public void update(Integer id, Inventory inventory) throws ApiException {
         Inventory existing = getCheck(id);
-        existing.setQuantity(p.getQuantity());
+        existing.setQuantity(inventory.getQuantity());
     }
 
     @Transactional(readOnly = true)

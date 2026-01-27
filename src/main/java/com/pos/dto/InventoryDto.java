@@ -7,6 +7,8 @@ import com.pos.pojo.Inventory;
 import com.pos.exception.ApiException;
 import com.pos.utils.InventoryConversion;
 import com.pos.utils.TsvParser;
+import jakarta.validation.Validator;
+import jakarta.validation.ConstraintViolation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Component
 public class InventoryDto extends AbstractDto {
@@ -21,38 +24,47 @@ public class InventoryDto extends AbstractDto {
     @Autowired
     private InventoryFlow inventoryFlow;
 
+    @Autowired
+    private Validator validator;
+
     public void upload(MultipartFile file) throws ApiException, IOException {
         List<InventoryForm> forms = TsvParser.parseInventoryTsv(file.getInputStream());
+
         List<Inventory> pojoList = new ArrayList<>();
         List<String> barcodes = new ArrayList<>();
 
-        for (InventoryForm f : forms) {
-            validateForm(f);
-            normalize(f);
-            Inventory p = InventoryConversion.convertFormToPojo(f);
-            pojoList.add(p);
-            barcodes.add(f.getBarcode());
+        for (InventoryForm form : forms) {
+
+            Set<ConstraintViolation<InventoryForm>> violations = validator.validate(form);
+            if (!violations.isEmpty()) {
+                throw new ApiException(violations.iterator().next().getMessage());
+            }
+
+            normalize(form);
+
+            Inventory pojo = InventoryConversion.convertFormToPojo(form);
+            pojoList.add(pojo);
+            barcodes.add(form.getBarcode());
         }
-        // Atomic call to Flow
+
         inventoryFlow.upsertBulk(pojoList, barcodes);
     }
 
     public List<InventoryData> getAll(String barcode, String productName, String clientName) throws ApiException {
-        List<Inventory> pojos = inventoryFlow.search(barcode, productName, clientName);
+        List<Inventory> inventories = inventoryFlow.search(barcode, productName, clientName);
         List<InventoryData> dataList = new ArrayList<>();
 
-        for (Inventory pojo : pojos) {
+        for (Inventory inventory : inventories) {
             try {
-                // If a product was deleted but inventory remains, these calls throw an error
-                // We catch it here so only that row is skipped, not the whole list
-                String b = inventoryFlow.getBarcode(pojo.getProductId());
-                String pName = inventoryFlow.getProductName(pojo.getProductId());
-                String cName = inventoryFlow.getClientName(pojo.getProductId());
+                String inventoryFlowBarcode = inventoryFlow.getBarcode(inventory.getProductId());
+                String inventoryFlowProductName = inventoryFlow.getProductName(inventory.getProductId());
+                String inventoryFlowClientName = inventoryFlow.getClientName(inventory.getProductId());
 
-                dataList.add(InventoryConversion.convertPojoToData(pojo, b, pName, cName));
+                dataList.add(
+                        InventoryConversion.convertPojoToData(inventory, inventoryFlowBarcode, inventoryFlowProductName, inventoryFlowClientName)
+                );
             } catch (Exception e) {
-                // Log and skip orphaned inventory record
-                System.out.println("Skipping invalid inventory record for ID: " + pojo.getId());
+                System.out.println("Skipping invalid inventory record for ID: " + inventory.getId());
             }
         }
         return dataList;

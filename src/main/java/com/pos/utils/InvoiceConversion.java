@@ -10,8 +10,6 @@ import java.util.List;
 
 public class InvoiceConversion {
 
-    private InvoiceConversion() {}
-
     public static InvoiceForm toInvoiceForm(
             Integer orderId,
             List<OrderItem> items,
@@ -24,8 +22,6 @@ public class InvoiceConversion {
 
         for (OrderItem item : items) {
             InvoiceItemForm f = new InvoiceItemForm();
-
-            // 🔑 productId → name
             String name = productApi.getNameById(item.getProductId());
 
             f.setName(name);

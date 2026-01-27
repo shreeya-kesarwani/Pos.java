@@ -41,40 +41,28 @@ public class OrderFlow {
     public Integer createOrder(List<OrderItem> items) throws ApiException {
 
         Order order = orderApi.create();
-
         for (OrderItem item : items) {
-
             item.setOrderId(order.getId());
-
-            Product product =
-                    productApi.getCheck(item.getProductId());
+            Product product = productApi.getCheck(item.getProductId());
 
             if (item.getSellingPrice() > product.getMrp()) {
                 throw new ApiException(
-                        "Selling price cannot be greater than MRP for product: "
-                                + product.getName()
+                        "Selling price cannot be greater than MRP for product: " + product.getName()
                 );
             }
 
-            Inventory inventory =
-                    inventoryApi.getByProductId(product.getId());
+            Inventory inventory = inventoryApi.getByProductId(product.getId());
 
-            if (inventory == null ||
-                    inventory.getQuantity() < item.getQuantity()) {
+            if (inventory == null || inventory.getQuantity() < item.getQuantity()) {
                 throw new ApiException(
-                        "Insufficient inventory for productId: "
-                                + product.getId()
+                        "Insufficient inventory for productId: " + product.getId()
                 );
             }
 
-            inventory.setQuantity(
-                    inventory.getQuantity() - item.getQuantity()
-            );
+            inventory.setQuantity(inventory.getQuantity() - item.getQuantity());
             inventoryApi.update(inventory.getId(), inventory);
-
             orderItemApi.add(item);
         }
-
         return order.getId();
     }
 
@@ -87,10 +75,7 @@ public class OrderFlow {
             int page,
             int size
     ) throws ApiException {
-
-        OrderStatus orderStatus =
-                (status == null) ? null : OrderStatus.valueOf(status);
-
+        OrderStatus orderStatus = (status == null) ? null : OrderStatus.valueOf(status);
         return orderApi.search(id, start, end, orderStatus, page, size);
     }
 
@@ -102,26 +87,17 @@ public class OrderFlow {
             String status
     ) {
 
-        OrderStatus orderStatus =
-                (status == null) ? null : OrderStatus.valueOf(status);
-
+        OrderStatus orderStatus = (status == null) ? null : OrderStatus.valueOf(status);
         return orderApi.getCount(id, start, end, orderStatus);
     }
 
     @Transactional(readOnly = true)
     public List<OrderItemData> getOrderItemData(Integer orderId)
             throws ApiException {
-
-        List<OrderItem> items =
-                orderItemApi.getByOrderId(orderId);
-
+        List<OrderItem> items = orderItemApi.getByOrderId(orderId);
         List<OrderItemData> data = new ArrayList<>();
-
         for (OrderItem item : items) {
-
-            Product product =
-                    productApi.getCheck(item.getProductId());
-
+            Product product = productApi.getCheck(item.getProductId());
             data.add(
                     OrderConversion.toOrderItemData(
                             item,
@@ -130,16 +106,13 @@ public class OrderFlow {
                     )
             );
         }
-
         return data;
     }
 
     @Transactional(readOnly = true)
     public Double calculateTotalAmount(Integer orderId) {
 
-        List<OrderItem> items =
-                orderItemApi.getByOrderId(orderId);
-
+        List<OrderItem> items = orderItemApi.getByOrderId(orderId);
         return OrderConversion.calculateTotalAmount(items);
     }
 
@@ -148,7 +121,6 @@ public class OrderFlow {
             throws ApiException {
 
         Order order = orderApi.getCheck(orderId);
-
         if (order.getStatus() == OrderStatus.INVOICED) {
             throw new ApiException("Order already invoiced");
         }
@@ -164,15 +136,11 @@ public class OrderFlow {
     private List<InvoiceItemForm> buildInvoiceItems(Integer orderId)
             throws ApiException {
 
-        List<OrderItem> orderItems =
-                orderItemApi.getByOrderId(orderId);
-
+        List<OrderItem> orderItems = orderItemApi.getByOrderId(orderId);
         List<InvoiceItemForm> invoiceItems = new ArrayList<>();
 
         for (OrderItem item : orderItems) {
-
-            Product product =
-                    productApi.getCheck(item.getProductId());
+            Product product = productApi.getCheck(item.getProductId());
 
             InvoiceItemForm f = new InvoiceItemForm();
             f.setName(product.getName());
@@ -187,7 +155,6 @@ public class OrderFlow {
 
     public void attachInvoice(Integer orderId, String path)
             throws ApiException {
-
         orderApi.attachInvoice(orderId, path);
     }
 

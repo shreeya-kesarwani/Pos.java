@@ -1,7 +1,12 @@
 package com.pos.model.data;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 
+@Setter
+@Getter
 public class PaginatedResponse<T> {
     private List<T> data;
     private Long totalCount;
@@ -15,10 +20,4 @@ public class PaginatedResponse<T> {
         return res;
     }
 
-    public List<T> getData() { return data; }
-    public void setData(List<T> data) { this.data = data; }
-    public Long getTotalCount() { return totalCount; }
-    public void setTotalCount(Long totalCount) { this.totalCount = totalCount; }
-    public Integer getPageNo() { return pageNo; }
-    public void setPageNo(Integer pageNo) { this.pageNo = pageNo; }
 }

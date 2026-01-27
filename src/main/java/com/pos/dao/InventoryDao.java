@@ -13,7 +13,6 @@ public class InventoryDao extends BaseDao {
     }
 
     public List<Inventory> search(String barcode, String productName, String clientName) {
-        // Ensure this says 'Inventory i' and 'Product p', NOT 'InventoryPojo'
         String jpql = "SELECT i FROM Inventory i " +
                 "JOIN Product p ON i.productId = p.id " +
                 "JOIN Client c ON p.clientId = c.id " +

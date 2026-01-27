@@ -26,25 +26,21 @@ public class OrderController {
     private InvoiceDto invoiceDto;
 
     @RequestMapping(method = RequestMethod.POST)
-    public Integer create(@RequestBody OrderForm form)
+    public Integer create(@RequestBody OrderForm orderForm)
             throws ApiException {
-        return orderDto.create(form);
+        return orderDto.create(orderForm);
     }
 
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<OrderData> search(
             @RequestParam(required = false) Integer id,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             ZonedDateTime start,
-
             @RequestParam(required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             ZonedDateTime end,
-
             @RequestParam(required = false) String status,
-
             @RequestParam int page,
             @RequestParam int size
     ) throws ApiException {

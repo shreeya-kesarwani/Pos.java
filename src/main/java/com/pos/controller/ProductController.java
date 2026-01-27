@@ -2,10 +2,9 @@ package com.pos.controller;
 
 import com.pos.dto.ProductDto;
 import com.pos.model.data.ProductData;
-import com.pos.model.data.PaginatedResponse; // New wrapper
+import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.ProductForm;
 import com.pos.exception.ApiException;
-import com.pos.utils.TsvParser;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
 
 @RestController
 @RequestMapping("/products")
@@ -23,7 +21,6 @@ public class ProductController {
     @Autowired
     private ProductDto productDto;
 
-    // CREATE
     @RequestMapping(method = RequestMethod.POST)
     public void add(@Valid @RequestBody ProductForm form) throws ApiException {
         productDto.add(form);
@@ -35,7 +32,6 @@ public class ProductController {
         productDto.addBulkFromTsv(file);
     }
 
-    // SEARCH & LIST
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ProductData> search(
             @RequestParam(required = false) String name,
@@ -47,8 +43,8 @@ public class ProductController {
     }
 
     @RequestMapping(value = "/{barcode}", method = RequestMethod.PUT)
-    public void update(@PathVariable String barcode, @Valid @RequestBody ProductForm form) throws ApiException {
-        productDto.update(barcode, form);
+    public void update(@PathVariable String barcode, @Valid @RequestBody ProductForm productForm) throws ApiException {
+        productDto.update(barcode, productForm);
     }
 
     @RequestMapping(value = "/count", method = RequestMethod.GET)

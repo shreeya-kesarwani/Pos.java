@@ -17,7 +17,6 @@ public class InventoryConversion {
         d.setQuantity(p.getQuantity());
         d.setBarcode(barcode);
         d.setProductName(productName);
-//        d.setClientName(clientName); // Uncommented
         return d;
     }
 }

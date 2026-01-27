@@ -11,6 +11,5 @@ public class ProductData {
     private String name;
     private Double mrp;
     private String clientName;
-//    private Integer quantity;
     private String imageUrl;
 }

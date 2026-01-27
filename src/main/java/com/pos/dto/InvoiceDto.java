@@ -6,6 +6,8 @@ import com.pos.model.data.InvoiceData;
 import com.pos.model.data.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.pojo.Order;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -16,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Base64;
+import java.util.Set;
 
 @Component
 public class InvoiceDto {
@@ -28,15 +31,21 @@ public class InvoiceDto {
     @Autowired
     private RestTemplate restTemplate;
 
+    @Autowired
+    private Validator validator;
+
     @Value("${invoice.service.url}")
     private String invoiceServiceUrl;
 
     public InvoiceData generate(Integer orderId) throws ApiException {
 
-        // 1️⃣ Build invoice form
         InvoiceForm form = orderFlow.buildInvoiceForm(orderId);
 
-        // 2️⃣ Call Invoice Service
+        Set<ConstraintViolation<InvoiceForm>> violations = validator.validate(form);
+        if (!violations.isEmpty()) {
+            throw new ApiException(violations.iterator().next().getMessage());
+        }
+
         InvoiceData data =
                 restTemplate.postForObject(
                         invoiceServiceUrl,
@@ -48,11 +57,9 @@ public class InvoiceDto {
             throw new ApiException("Failed to generate invoice");
         }
 
-        // 3️⃣ Decode Base64 PDF
         byte[] pdfBytes =
                 Base64.getDecoder().decode(data.getBase64Pdf());
 
-        // 4️⃣ Save PDF & attach
         try {
             Files.createDirectories(Paths.get(INVOICE_DIR));
 

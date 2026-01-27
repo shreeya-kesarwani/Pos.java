@@ -12,13 +12,6 @@ import java.util.List;
 
 public class OrderConversion {
 
-    /* =======================
-       POJO -> DATA
-       ======================= */
-
-    /**
-     * Convert Order + computed total into OrderData
-     */
     public static OrderData toOrderData(Order order, Double totalAmount) {
         OrderData d = new OrderData();
         d.setId(order.getId());
@@ -28,23 +21,15 @@ public class OrderConversion {
         return d;
     }
 
-    /**
-     * ✅ PURE helper to calculate total amount
-     * total = Σ (quantity × sellingPrice)
-     */
     public static Double calculateTotalAmount(List<OrderItem> items) {
         double total = 0.0;
 
         for (OrderItem item : items) {
             total += item.getQuantity() * item.getSellingPrice();
         }
-
         return total;
     }
 
-    /**
-     * Convert OrderItem + product info into data
-     */
     public static OrderItemData toOrderItemData(
             OrderItem item,
             String barcode,
@@ -59,9 +44,6 @@ public class OrderConversion {
         return d;
     }
 
-    /**
-     * Minimal conversion (enrichment happens in DTO)
-     */
     public static List<OrderItemData> toOrderItemDataList(List<OrderItem> items) {
         List<OrderItemData> list = new ArrayList<>();
 
@@ -76,13 +58,8 @@ public class OrderConversion {
         return list;
     }
 
-    /* =======================
-       FORM -> POJO
-       ======================= */
-
     public static Order toOrderPojo(OrderForm form) {
         Order o = new Order();
-        // status & timestamps are set in Flow/API layer
         return o;
     }
 

@@ -5,9 +5,9 @@ import lombok.Setter;
 
 @Getter @Setter
 public class OrderItemData {
-    private Integer id;             // OrderItem ID
-    private String barcode;         // Resolved from ProductPojo
-    private String productName;     // Resolved from ProductPojo
-    private Integer quantity;       // Quantity sold
-    private Double sellingPrice;    // Price at which it was sold
+    private Integer id;
+    private String barcode;
+    private String productName;
+    private Integer quantity;
+    private Double sellingPrice;
 }

@@ -21,7 +21,6 @@ public class ClientController {
         clientDto.add(clientForm);
     }
 
-    // Combined Search & GetAll
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ClientData> getClients(
             @RequestParam(required = false) Integer id,
@@ -33,10 +32,9 @@ public class ClientController {
         return clientDto.getClients(id, name, email, page, size);
     }
 
-    // UPDATE - using @PathVariable name to match your DTO signature
-    @RequestMapping(value = "/{name}", method = RequestMethod.PUT)
-    public void update(@PathVariable String name, @Valid @RequestBody ClientForm clientForm) throws ApiException {
-        clientDto.update(name, clientForm);
+    @RequestMapping(value = "/{ClientName}", method = RequestMethod.PUT)
+    public void update(@PathVariable String ClientName, @Valid @RequestBody ClientForm clientForm) throws ApiException {
+        clientDto.update(ClientName, clientForm);
     }
 
     @RequestMapping(value = "/count", method = RequestMethod.GET)

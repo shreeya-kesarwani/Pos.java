@@ -6,16 +6,13 @@ import com.pos.pojo.Product;
 
 public class ProductConversion {
 
-    // For CREATE: No ID yet
     public static Product convertFormToPojo(ProductForm form) {
         Product p = new Product();
         p.setName(form.getName());
         p.setBarcode(form.getBarcode());
         p.setMrp(form.getMrp());
-        // clientId will be set by the Flow layer
-        // Explicitly check for empty or blank strings
         if (form.getImageUrl() == null || form.getImageUrl().isBlank()) {
-            p.setImageUrl(null); // Force it to be null so the DB is happy
+            p.setImageUrl(null);
         } else {
             p.setImageUrl(form.getImageUrl());
         }
@@ -23,14 +20,13 @@ public class ProductConversion {
         return p;
     }
 
-    // For DISPLAY: Pass ID explicitly as per your new Client pattern
     public static ProductData convertPojoToData(Integer id, Product p, String clientName) {
         ProductData d = new ProductData();
         d.setId(id);
         d.setName(p.getName());
         d.setBarcode(p.getBarcode());
         d.setMrp(p.getMrp());
-        d.setClientName(clientName); // Resolved from Flow layer
+        d.setClientName(clientName);
         return d;
     }
 }
