@@ -16,7 +16,7 @@ public class ProductForm {
     @NotBlank
     private String clientName;
 
-    @NotNull
+    @NotBlank
     private String name;
 
     @Min(value = 0)

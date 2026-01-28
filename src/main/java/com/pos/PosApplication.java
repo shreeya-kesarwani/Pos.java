@@ -1,10 +1,11 @@
 package com.pos;
 
-import com.pos.model.form.ProductForm;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
+@EnableScheduling
 @SpringBootApplication
 @EnableTransactionManagement
 public class PosApplication {
@@ -12,5 +13,3 @@ public class PosApplication {
         SpringApplication.run(PosApplication.class, args);
     }
 }
-
-//read about @valid in detail, implementation in detail

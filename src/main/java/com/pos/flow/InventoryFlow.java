@@ -29,7 +29,7 @@ public class InventoryFlow {
         if (existing_inventory == null) {
             inventoryApi.add(inventory);
         } else {
-            existing_inventory.setQuantity(existing_inventory.getQuantity() + inventory.getQuantity());
+            existing_inventory.setQuantity(inventory.getQuantity());
         }
     }
 
@@ -37,16 +37,6 @@ public class InventoryFlow {
         for (int inventory_index = 0; inventory_index < inventories.size(); inventory_index++) {
             upsert(barcodes.get(inventory_index), inventories.get(inventory_index));
         }
-    }
-
-    @Transactional(readOnly = true)
-    public String getClientName(Integer productId) throws ApiException {
-        Product product = productApi.getCheck(productId);
-        Integer clientId = product.getClientId();
-        if (clientId == null) {
-            throw new ApiException("Client not associated with product id: " + productId);
-        }
-        return clientApi.getCheck(clientId).getName();
     }
 
     @Transactional(readOnly = true)

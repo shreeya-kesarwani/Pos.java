@@ -1,14 +1,12 @@
 package com.pos.dto;
 
+import com.pos.exception.ApiException;
 import com.pos.flow.InventoryFlow;
 import com.pos.model.data.InventoryData;
 import com.pos.model.form.InventoryForm;
 import com.pos.pojo.Inventory;
-import com.pos.exception.ApiException;
 import com.pos.utils.InventoryConversion;
 import com.pos.utils.TsvParser;
-import jakarta.validation.Validator;
-import jakarta.validation.ConstraintViolation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,16 +14,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Component
 public class InventoryDto extends AbstractDto {
 
     @Autowired
     private InventoryFlow inventoryFlow;
-
-    @Autowired
-    private Validator validator;
 
     public void upload(MultipartFile file) throws ApiException, IOException {
         List<InventoryForm> forms = TsvParser.parseInventoryTsv(file.getInputStream());
@@ -34,12 +28,7 @@ public class InventoryDto extends AbstractDto {
         List<String> barcodes = new ArrayList<>();
 
         for (InventoryForm form : forms) {
-
-            Set<ConstraintViolation<InventoryForm>> violations = validator.validate(form);
-            if (!violations.isEmpty()) {
-                throw new ApiException(violations.iterator().next().getMessage());
-            }
-
+            validateForm(form);
             normalize(form);
 
             Inventory pojo = InventoryConversion.convertFormToPojo(form);
@@ -56,17 +45,18 @@ public class InventoryDto extends AbstractDto {
 
         for (Inventory inventory : inventories) {
             try {
-                String inventoryFlowBarcode = inventoryFlow.getBarcode(inventory.getProductId());
-                String inventoryFlowProductName = inventoryFlow.getProductName(inventory.getProductId());
-                String inventoryFlowClientName = inventoryFlow.getClientName(inventory.getProductId());
+                String invBarcode = inventoryFlow.getBarcode(inventory.getProductId());
+                String invProductName = inventoryFlow.getProductName(inventory.getProductId());
 
                 dataList.add(
-                        InventoryConversion.convertPojoToData(inventory, inventoryFlowBarcode, inventoryFlowProductName, inventoryFlowClientName)
+                        InventoryConversion.convertPojoToData(inventory, invBarcode, invProductName)
                 );
             } catch (Exception e) {
+                // If you want, replace with logger (recommended) instead of System.out
                 System.out.println("Skipping invalid inventory record for ID: " + inventory.getId());
             }
         }
+
         return dataList;
     }
 }

@@ -9,8 +9,10 @@ import com.pos.model.data.OrderItemData;
 import com.pos.model.data.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.InvoiceItemForm;
+import com.pos.model.form.OrderItemForm;
 import com.pos.pojo.Inventory;
 import com.pos.pojo.Order;
+import com.pos.model.form.OrderForm;
 import com.pos.pojo.OrderItem;
 import com.pos.pojo.Product;
 import com.pos.utils.OrderConversion;
@@ -38,28 +40,38 @@ public class OrderFlow {
     @Autowired
     private ProductApi productApi;
 
-    public Integer createOrder(List<OrderItem> items) throws ApiException {
+    public Integer createOrder(OrderForm form) throws ApiException {
 
         Order order = orderApi.create();
-        for (OrderItem item : items) {
-            item.setOrderId(order.getId());
-            Product product = productApi.getCheck(item.getProductId());
 
-            if (item.getSellingPrice() > product.getMrp()) {
+        for (OrderItemForm itemForm : form.getItems()) {
+
+            String barcode = itemForm.getBarcode();
+            if (barcode == null || barcode.trim().isEmpty()) {
+                throw new ApiException("Barcode cannot be empty");
+            }
+
+            Integer productId = productApi.getIdByBarcode(barcode.trim());
+
+            Product product = productApi.getCheck(productId);
+
+            if (itemForm.getSellingPrice() > product.getMrp()) {
                 throw new ApiException(
                         "Selling price cannot be greater than MRP for product: " + product.getName()
                 );
             }
-
             Inventory inventory = inventoryApi.getByProductId(product.getId());
-
-            if (inventory == null || inventory.getQuantity() < item.getQuantity()) {
-                throw new ApiException(
-                        "Insufficient inventory for productId: " + product.getId()
-                );
+            if (inventory == null || inventory.getQuantity() < itemForm.getQuantity()) {
+                throw new ApiException("Insufficient inventory for productId: " + product.getId());
             }
 
-            inventory.setQuantity(inventory.getQuantity() - item.getQuantity());
+            OrderItem item = new OrderItem();
+            item.setOrderId(order.getId());
+            item.setProductId(productId);
+            item.setQuantity(itemForm.getQuantity());
+            item.setSellingPrice(itemForm.getSellingPrice());
+
+            inventory.setQuantity(inventory.getQuantity() - itemForm.getQuantity());
             inventoryApi.update(inventory.getId(), inventory);
             orderItemApi.add(item);
         }
@@ -128,7 +140,6 @@ public class OrderFlow {
         InvoiceForm form = new InvoiceForm();
         form.setOrderId(orderId);
         form.setItems(buildInvoiceItems(orderId));
-
         return form;
     }
 

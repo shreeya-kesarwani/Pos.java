@@ -40,19 +40,31 @@ public class ProductFlow {
 
     @Transactional(readOnly = true)
     public String getClientName(Integer clientId) throws ApiException {
-
         if (clientId == null) {
             throw new ApiException("Client ID is missing for product");
         }
 
-        return clientApi.getCheck(clientId).getName();
+        Client client = clientApi.get(clientId); // <-- make sure this exists in ClientApi
+        if (client == null) {
+            throw new ApiException("Client not found: " + clientId);
+        }
+
+        return client.getName();
     }
 
     private Integer getClientIdByName(String clientName) throws ApiException {
-        Client client = clientApi.getCheckByName(clientName);
+        if (clientName == null || clientName.trim().isEmpty()) {
+            throw new ApiException("Client name is required");
+        }
+
+        Client client = clientApi.getByName(clientName); // <-- you already have this
+        if (client == null) {
+            throw new ApiException("Client not found: " + clientName);
+        }
         return client.getId();
     }
-
+    //TODO: Why cant we fetch all the products in one query, how to solve N+1 problem
+    //TODO: can use java streams instead of for loop
     public void addBulk(List<Product> products, List<String> clientNames) throws ApiException {
         for (int product_index = 0; product_index < products.size(); product_index++) {
             Product product = products.get(product_index);

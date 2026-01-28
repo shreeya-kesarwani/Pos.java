@@ -11,6 +11,7 @@ import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
 import com.pos.utils.OrderConversion;
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Valid;
 import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -26,25 +27,18 @@ public class OrderDto extends AbstractDto {
     @Autowired
     private OrderFlow orderFlow;
 
-    public Integer create(OrderForm form) throws ApiException {
+    public Integer create(@Valid OrderForm form) throws ApiException {
 
-        validateOrThrow(form);
+        normalize(form);
 
         if (form.getItems() == null || form.getItems().isEmpty()) {
             throw new ApiException("Order must contain at least one item");
         }
 
-        List<OrderItem> items = new ArrayList<>();
-
-        for (OrderItemForm itemForm : form.getItems()) {
-            validateOrThrow(itemForm);
-            normalize(itemForm);
-            OrderItem item = OrderConversion.toOrderItemPojo(itemForm, null);
-            items.add(item);
-        }
-
-        return orderFlow.createOrder(items);
+        // ✅ No ProductApi call here
+        return orderFlow.createOrder(form);
     }
+
 
     public PaginatedResponse<OrderData> search(
             Integer id,

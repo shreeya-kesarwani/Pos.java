@@ -12,7 +12,7 @@ public class InventoryConversion {
         return p;
     }
 
-    public static InventoryData convertPojoToData(Inventory p, String barcode, String productName, String clientName) {
+    public static InventoryData convertPojoToData(Inventory p, String barcode, String productName) {
         InventoryData d = new InventoryData();
         d.setQuantity(p.getQuantity());
         d.setBarcode(barcode);

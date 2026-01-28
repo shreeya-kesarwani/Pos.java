@@ -42,4 +42,5 @@ public class ProductDao extends BaseDao {
                 .setParameter("barcode", barcode)
                 .getResultList().stream().findFirst().orElse(null);
     }
+
 }

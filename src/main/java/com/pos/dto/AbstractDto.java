@@ -32,10 +32,10 @@ public abstract class AbstractDto {
     }
 
     protected String normalize(String string) {
-        return (string == null) ? null : string.trim().toLowerCase();
+        return (string == null || string.isEmpty()) ? null : string.trim();
     }
 
-    protected <T> void validateOrThrow(T obj) throws ApiException {
+    protected <T> void validateForm(T obj) throws ApiException {
         Set<ConstraintViolation<T>> violations = validator.validate(obj);
         if (!violations.isEmpty()) {
             throw new ApiException(

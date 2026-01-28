@@ -16,24 +16,30 @@ public class ProductApi {
     @Autowired
     private ProductDao productDao;
 
-    public Product get(Integer id) {
+    public Product get(Integer id) throws ApiException {
+        if (id == null) {
+            throw new ApiException("Product id cannot be null");
+        }
         return productDao.select(id, Product.class);
     }
 
     public Product getCheck(Integer id) throws ApiException {
-        Product product = get(id);
+        Product product = get(id); // will throw if id is null
         if (product == null) {
             throw new ApiException(String.format("Product with ID %d does not exist", id));
         }
         return product;
     }
 
-    public Product getByBarcode(String barcode) {
-        return productDao.selectByBarcode(barcode);
+    public Product getByBarcode(String barcode) throws ApiException {
+        if (barcode == null || barcode.trim().isEmpty()) {
+            throw new ApiException("Barcode cannot be empty");
+        }
+        return productDao.selectByBarcode(barcode.trim());
     }
 
     public Product getCheckByBarcode(String barcode) throws ApiException {
-        Product product = getByBarcode(barcode);
+        Product product = getByBarcode(barcode); // validates barcode
         if (product == null) {
             throw new ApiException(String.format("Product with barcode [%s] not found", barcode));
         }
@@ -41,33 +47,43 @@ public class ProductApi {
     }
 
     public Integer getIdByBarcode(String barcode) throws ApiException {
-        Product product = getCheckByBarcode(barcode);
-        return product.getId();
+        return getCheckByBarcode(barcode).getId();
     }
 
     public String getBarcodeById(Integer productId) throws ApiException {
-        Product product = getCheck(productId);
-        return product.getBarcode();
+        return getCheck(productId).getBarcode();
     }
 
     public String getNameById(Integer productId) throws ApiException {
-        Product product = getCheck(productId);
-        return product.getName();
+        return getCheck(productId).getName();
     }
 
     public void add(Product product) throws ApiException {
-        if (getByBarcode(product.getBarcode()) != null) {
-            throw new ApiException(
-                    String.format("Product with barcode [%s] already exists", product.getBarcode())
-            );
+        if (product == null) {
+            throw new ApiException("Product cannot be null");
         }
+        if (product.getBarcode() == null || product.getBarcode().trim().isEmpty()) {
+            throw new ApiException("Product barcode cannot be empty");
+        }
+
+        String barcode = product.getBarcode();
+        if (getByBarcode(barcode) != null) {
+            throw new ApiException(String.format("Product with barcode [%s] already exists", barcode));
+        }
+
         productDao.insert(product);
     }
-
+//TODO: check for existing, make it mutable
     public void update(String barcode, Product product) throws ApiException {
-        Product existing = getCheckByBarcode(barcode);
+        if (product == null) {
+            throw new ApiException("Product cannot be null");
+        }
+
+        Product existing = getCheckByBarcode(barcode); // validates barcode
+
         existing.setName(product.getName());
         existing.setMrp(product.getMrp());
+        existing.setBarcode(product.getBarcode());
     }
 
     @Transactional(readOnly = true)
