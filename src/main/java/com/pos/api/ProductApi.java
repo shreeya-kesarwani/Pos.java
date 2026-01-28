@@ -114,4 +114,31 @@ public class ProductApi {
     public Long getCount(String name, String barcode, String clientName) {
         return productDao.getCount(name, barcode, clientName);
     }
+
+    public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
+        if (productId == null) {
+            throw new ApiException("Product id cannot be null");
+        }
+        if (sellingPrice == null) {
+            throw new ApiException("Selling price cannot be null");
+        }
+
+        Product product = getCheck(productId);
+        if (product.getMrp() == null) {
+            throw new ApiException("MRP is not set for product: " + productId);
+        }
+
+        if (sellingPrice > product.getMrp()) {
+            throw new ApiException(
+                    "Selling price cannot be greater than MRP for product: " + product.getName()
+            );
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return productDao.selectByIds(ids);
+    }
+
 }

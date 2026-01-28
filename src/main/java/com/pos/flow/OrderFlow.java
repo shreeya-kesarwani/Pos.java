@@ -10,7 +10,6 @@ import com.pos.model.data.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.InvoiceItemForm;
 import com.pos.model.form.OrderItemForm;
-import com.pos.pojo.Inventory;
 import com.pos.pojo.Order;
 import com.pos.model.form.OrderForm;
 import com.pos.pojo.OrderItem;
@@ -30,76 +29,41 @@ public class OrderFlow {
 
     @Autowired
     private OrderApi orderApi;
-
     @Autowired
     private OrderItemApi orderItemApi;
-
     @Autowired
     private InventoryApi inventoryApi;
-
     @Autowired
     private ProductApi productApi;
 
     public Integer createOrder(OrderForm form) throws ApiException {
 
         Order order = orderApi.create();
-
         for (OrderItemForm itemForm : form.getItems()) {
-
             String barcode = itemForm.getBarcode();
             if (barcode == null || barcode.trim().isEmpty()) {
                 throw new ApiException("Barcode cannot be empty");
             }
 
             Integer productId = productApi.getIdByBarcode(barcode.trim());
-
-            Product product = productApi.getCheck(productId);
-
-            if (itemForm.getSellingPrice() > product.getMrp()) {
-                throw new ApiException(
-                        "Selling price cannot be greater than MRP for product: " + product.getName()
-                );
-            }
-            Inventory inventory = inventoryApi.getByProductId(product.getId());
-            if (inventory == null || inventory.getQuantity() < itemForm.getQuantity()) {
-                throw new ApiException("Insufficient inventory for productId: " + product.getId());
-            }
-
-            OrderItem item = new OrderItem();
-            item.setOrderId(order.getId());
-            item.setProductId(productId);
-            item.setQuantity(itemForm.getQuantity());
-            item.setSellingPrice(itemForm.getSellingPrice());
-
-            inventory.setQuantity(inventory.getQuantity() - itemForm.getQuantity());
-            inventoryApi.update(inventory.getId(), inventory);
-            orderItemApi.add(item);
+            productApi.validateSellingPrice(productId, itemForm.getSellingPrice());
+            inventoryApi.allocate(productId, itemForm.getQuantity());
+            orderItemApi.add(order.getId(), productId, itemForm.getQuantity(), itemForm.getSellingPrice());
         }
         return order.getId();
     }
 
     @Transactional(readOnly = true)
-    public List<Order> search(
-            Integer id,
-            ZonedDateTime start,
-            ZonedDateTime end,
-            String status,
-            int page,
-            int size
-    ) throws ApiException {
-        OrderStatus orderStatus = (status == null) ? null : OrderStatus.valueOf(status);
+    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end,
+                              String status, int page, int size) throws ApiException {
+        OrderStatus orderStatus = parseStatus(status);
         return orderApi.search(id, start, end, orderStatus, page, size);
     }
 
     @Transactional(readOnly = true)
-    public Long getCount(
-            Integer id,
-            ZonedDateTime start,
-            ZonedDateTime end,
-            String status
-    ) {
-
-        OrderStatus orderStatus = (status == null) ? null : OrderStatus.valueOf(status);
+    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, String status)
+            throws ApiException {
+        OrderStatus orderStatus = parseStatus(status);
         return orderApi.getCount(id, start, end, orderStatus);
     }
 
@@ -110,20 +74,13 @@ public class OrderFlow {
         List<OrderItemData> data = new ArrayList<>();
         for (OrderItem item : items) {
             Product product = productApi.getCheck(item.getProductId());
-            data.add(
-                    OrderConversion.toOrderItemData(
-                            item,
-                            product.getBarcode(),
-                            product.getName()
-                    )
-            );
+            data.add(OrderConversion.toOrderItemData(item, product.getBarcode(), product.getName()));
         }
         return data;
     }
 
     @Transactional(readOnly = true)
     public Double calculateTotalAmount(Integer orderId) {
-
         List<OrderItem> items = orderItemApi.getByOrderId(orderId);
         return OrderConversion.calculateTotalAmount(items);
     }
@@ -136,7 +93,6 @@ public class OrderFlow {
         if (order.getStatus() == OrderStatus.INVOICED) {
             throw new ApiException("Order already invoiced");
         }
-
         InvoiceForm form = new InvoiceForm();
         form.setOrderId(orderId);
         form.setItems(buildInvoiceItems(orderId));
@@ -149,18 +105,14 @@ public class OrderFlow {
 
         List<OrderItem> orderItems = orderItemApi.getByOrderId(orderId);
         List<InvoiceItemForm> invoiceItems = new ArrayList<>();
-
         for (OrderItem item : orderItems) {
             Product product = productApi.getCheck(item.getProductId());
-
             InvoiceItemForm f = new InvoiceItemForm();
             f.setName(product.getName());
             f.setQuantity(item.getQuantity());
             f.setSellingPrice(item.getSellingPrice());
-
             invoiceItems.add(f);
         }
-
         return invoiceItems;
     }
 
@@ -173,4 +125,15 @@ public class OrderFlow {
     public Order getOrder(Integer orderId) throws ApiException {
         return orderApi.getCheck(orderId);
     }
+
+    private OrderStatus parseStatus(String status) throws ApiException {
+        if (status == null || status.trim().isEmpty()) return null;
+
+        try {
+            return OrderStatus.valueOf(status.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ApiException("Invalid status: " + status + ". Allowed: CREATED, INVOICED");
+        }
+    }
+
 }

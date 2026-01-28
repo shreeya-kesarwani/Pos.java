@@ -1,20 +1,45 @@
-package com.pos.controller;
+package com.pos.exception;
 
-import com.pos.exception.ApiException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.util.Map;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. Business Errors
+    /**
+     * 1️⃣ TSV Upload Validation Errors (MOST SPECIFIC — MUST BE FIRST)
+     */
+    @ExceptionHandler(UploadValidationException.class)
+    public ResponseEntity<byte[]> handleUploadValidation(
+            UploadValidationException exception) {
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(exception.getContentType()));
+        headers.set(
+                HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + exception.getFilename() + "\""
+        );
+
+        return new ResponseEntity<>(
+                exception.getFileBytes(),
+                headers,
+                HttpStatus.BAD_REQUEST
+        );
+    }
+
+    /**
+     * 2️⃣ Business Errors
+     */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<?> handleApiException(
             ApiException exception,
@@ -29,7 +54,9 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", exception.getMessage()));
     }
 
-    // 2. Validation Errors
+    /**
+     * 3️⃣ Bean Validation Errors (@Valid)
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<?> handleValidation(
             MethodArgumentNotValidException exception,
@@ -52,7 +79,9 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", msg));
     }
 
-    // 3. Invoice Service Down (8081)
+    /**
+     * 4️⃣ Invoice service down
+     */
     @ExceptionHandler(ResourceAccessException.class)
     public ResponseEntity<?> handleNetworkError(
             ResourceAccessException exception,
@@ -70,7 +99,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    // 4. Unknown Errors
+    /**
+     * 5️⃣ IO errors (file upload)
+     */
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<?> handleIo(IOException ex) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", "Invalid file upload"));
+    }
+
+    /**
+     * 6️⃣ Catch-all safety net
+     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(
             Exception exception,

@@ -1,10 +1,10 @@
 package com.pos.controller;
 
 import com.pos.dto.ProductDto;
-import com.pos.model.data.ProductData;
-import com.pos.model.data.PaginatedResponse;
-import com.pos.model.form.ProductForm;
 import com.pos.exception.ApiException;
+import com.pos.model.data.PaginatedResponse;
+import com.pos.model.data.ProductData;
+import com.pos.model.form.ProductForm;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,8 @@ public class ProductController {
             @RequestParam(required = false) String barcode,
             @RequestParam(required = false) String clientName,
             @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) throws ApiException {
+            @RequestParam(defaultValue = "10") Integer size
+    ) throws ApiException {
         return productDto.getProducts(name, barcode, clientName, page, size);
     }
 

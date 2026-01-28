@@ -44,7 +44,6 @@ public class OrderApi {
             OrderStatus status,
             int page,
             int size) {
-
         return orderDao.search(id, start, end, status, page, size);
     }
 
@@ -53,7 +52,6 @@ public class OrderApi {
             ZonedDateTime start,
             ZonedDateTime end,
             OrderStatus status) {
-
         return orderDao.getCount(id, start, end, status);
     }
 
@@ -67,11 +65,8 @@ public class OrderApi {
                     "Invoice can only be generated for CREATED orders"
             );
         }
-
         order.setInvoicePath(path);
         order.setStatus(OrderStatus.INVOICED);
-
         orderDao.update(order);
     }
-
 }

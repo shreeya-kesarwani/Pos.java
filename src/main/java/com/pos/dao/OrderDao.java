@@ -64,5 +64,4 @@ public class OrderDao extends BaseDao {
                 .setParameter("end", end)
                 .getSingleResult();
     }
-
 }

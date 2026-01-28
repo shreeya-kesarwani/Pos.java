@@ -43,4 +43,13 @@ public class ProductDao extends BaseDao {
                 .getResultList().stream().findFirst().orElse(null);
     }
 
+    public List<Product> selectByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+
+        String jpql = "SELECT p FROM Product p WHERE p.id IN :ids";
+        return em().createQuery(jpql, Product.class)
+                .setParameter("ids", ids)
+                .getResultList();
+    }
+
 }

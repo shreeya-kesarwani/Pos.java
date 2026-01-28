@@ -17,7 +17,6 @@ public class DaySalesScheduler {
 //    @Scheduled(cron = "0 03 11 * * ?", zone = "Asia/Kolkata")
     @Scheduled(fixedDelay = 10000)
     public void computeYesterday() throws ApiException {
-//        LocalDate yesterday = LocalDate.now().minusDays(1);
         LocalDate yesterday = LocalDate.now();
         daySalesApi.calculateAndStore(yesterday);
     }

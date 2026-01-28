@@ -17,7 +17,17 @@ public class OrderItemApi {
         orderItemDao.insert(item);
     }
 
+    public void add(Integer orderId, Integer productId, Integer quantity, Double sellingPrice) {
+        OrderItem item = new OrderItem();
+        item.setOrderId(orderId);
+        item.setProductId(productId);
+        item.setQuantity(quantity);
+        item.setSellingPrice(sellingPrice);
+        orderItemDao.insert(item);
+    }
+
     public List<OrderItem> getByOrderId(Integer orderId) {
         return orderItemDao.selectByOrderId(orderId);
     }
 }
+

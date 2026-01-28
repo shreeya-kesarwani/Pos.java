@@ -58,4 +58,26 @@ public class InventoryApi {
         return inventoryDao.getCount(barcode, productName, clientName);
     }
 
+    public void allocate(Integer productId, Integer quantity) throws ApiException {
+        if (productId == null) {
+            throw new ApiException("Product id cannot be null");
+        }
+        if (quantity == null || quantity <= 0) {
+            throw new ApiException("Quantity must be > 0");
+        }
+
+        Inventory inventory = getByProductId(productId);
+        if (inventory == null) {
+            throw new ApiException("Inventory not found for productId: " + productId);
+        }
+        if (inventory.getQuantity() < quantity) {
+            throw new ApiException("Insufficient inventory for productId: " + productId);
+        }
+
+        inventory.setQuantity(inventory.getQuantity() - quantity);
+        // your update() copies quantity into managed entity (dirty checking will persist it)
+        update(inventory.getId(), inventory);
+    }
+
+
 }

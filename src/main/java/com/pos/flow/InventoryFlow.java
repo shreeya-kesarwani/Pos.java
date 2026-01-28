@@ -58,5 +58,4 @@ public class InventoryFlow {
     public Long getCount(String barcode, String productName, String clientName) {
         return inventoryApi.getCount(barcode, productName, clientName);
     }
-
 }
