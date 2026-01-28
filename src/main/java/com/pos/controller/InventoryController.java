@@ -3,6 +3,7 @@ package com.pos.controller;
 import com.pos.dto.InventoryDto;
 import com.pos.model.data.InventoryData;
 import com.pos.exception.ApiException;
+import com.pos.model.data.PaginatedResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -19,18 +20,19 @@ public class InventoryController {
     @Autowired
     private InventoryDto inventoryDto;
 
-    @Operation(summary = "Upload inventory via TSV")
     @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
         inventoryDto.upload(file);
     }
 
-    @Operation(summary = "Get filtered inventory list")
     @RequestMapping(method = RequestMethod.GET)
-    public List<InventoryData> get(
+    public PaginatedResponse<InventoryData> get(
             @RequestParam(required = false) String barcode,
             @RequestParam(required = false) String productName,
-            @RequestParam(required = false) String clientName) throws ApiException {
-        return inventoryDto.getAll(barcode, productName, clientName);
+            @RequestParam(required = false) String clientName,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size
+    ) throws ApiException {
+        return inventoryDto.getAll(barcode, productName, clientName, page, size);
     }
 }

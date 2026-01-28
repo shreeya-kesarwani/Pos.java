@@ -40,11 +40,6 @@ public class InventoryFlow {
     }
 
     @Transactional(readOnly = true)
-    public List<Inventory> search(String barcode, String productName, String clientName) {
-        return inventoryApi.search(barcode, productName, clientName);
-    }
-
-    @Transactional(readOnly = true)
     public String getBarcode(Integer productId) throws ApiException {
         return productApi.getCheck(productId).getBarcode();
     }
@@ -53,4 +48,15 @@ public class InventoryFlow {
     public String getProductName(Integer productId) throws ApiException {
         return productApi.getCheck(productId).getName();
     }
+
+    @Transactional(readOnly = true)
+    public List<Inventory> search(String barcode, String productName, String clientName, int page, int size) {
+        return inventoryApi.search(barcode, productName, clientName, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public Long getCount(String barcode, String productName, String clientName) {
+        return inventoryApi.getCount(barcode, productName, clientName);
+    }
+
 }

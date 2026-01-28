@@ -73,17 +73,36 @@ public class ProductApi {
 
         productDao.insert(product);
     }
-//TODO: check for existing, make it mutable
+
     public void update(String barcode, Product product) throws ApiException {
         if (product == null) {
             throw new ApiException("Product cannot be null");
         }
 
-        Product existing = getCheckByBarcode(barcode); // validates barcode
+        if (product.getName() == null || product.getName().trim().isEmpty()) {
+            throw new ApiException("Product name cannot be empty");
+        }
+        if (product.getMrp() == null) {
+            throw new ApiException("Product mrp cannot be null");
+        }
 
+        Product existing = getCheckByBarcode(barcode);
+
+        String newBarcode = product.getBarcode();
+        if (newBarcode == null || newBarcode.isEmpty()) {
+            throw new ApiException("Product barcode cannot be empty");
+        }
+
+        if (!newBarcode.equals(existing.getBarcode())) {
+            Product other = getByBarcode(newBarcode);
+            if (other != null && !other.getId().equals(existing.getId())) {
+                throw new ApiException(String.format("Product with barcode [%s] already exists", newBarcode));
+            }
+            existing.setBarcode(newBarcode);
+        }
         existing.setName(product.getName());
         existing.setMrp(product.getMrp());
-        existing.setBarcode(product.getBarcode());
+        existing.setImageUrl(product.getImageUrl() == null ? null : product.getImageUrl());
     }
 
     @Transactional(readOnly = true)

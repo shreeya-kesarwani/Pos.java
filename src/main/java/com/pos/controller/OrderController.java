@@ -41,8 +41,8 @@ public class OrderController {
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
             ZonedDateTime end,
             @RequestParam(required = false) String status,
-            @RequestParam int page,
-            @RequestParam int size
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
     ) throws ApiException {
 
         return orderDto.search(id, start, end, status, page, size);

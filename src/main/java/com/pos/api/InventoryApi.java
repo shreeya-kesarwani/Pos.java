@@ -49,7 +49,13 @@ public class InventoryApi {
     }
 
     @Transactional(readOnly = true)
-    public List<Inventory> search(String barcode, String productName, String clientName) {
-        return inventoryDao.search(barcode, productName, clientName);
+    public List<Inventory> search(String barcode, String productName, String clientName, int page, int size) {
+        return inventoryDao.search(barcode, productName, clientName, page, size);
     }
+
+    @Transactional(readOnly = true)
+    public Long getCount(String barcode, String productName, String clientName) {
+        return inventoryDao.getCount(barcode, productName, clientName);
+    }
+
 }

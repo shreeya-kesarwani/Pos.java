@@ -3,6 +3,7 @@ package com.pos.dto;
 import com.pos.exception.ApiException;
 import com.pos.flow.InventoryFlow;
 import com.pos.model.data.InventoryData;
+import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.InventoryForm;
 import com.pos.pojo.Inventory;
 import com.pos.utils.InventoryConversion;
@@ -39,10 +40,24 @@ public class InventoryDto extends AbstractDto {
         inventoryFlow.upsertBulk(pojoList, barcodes);
     }
 
-    public List<InventoryData> getAll(String barcode, String productName, String clientName) throws ApiException {
-        List<Inventory> inventories = inventoryFlow.search(barcode, productName, clientName);
-        List<InventoryData> dataList = new ArrayList<>();
+    public PaginatedResponse<InventoryData> getAll(
+            String barcode,
+            String productName,
+            String clientName,
+            Integer page,
+            Integer size
+    ) throws ApiException {
 
+        int pageNumber = (page == null) ? 0 : page;
+        int pageSize = (size == null) ? 10 : size;
+
+        String b = normalize(barcode);
+        String pn = normalize(productName);
+        String cn = normalize(clientName);
+
+        List<Inventory> inventories = inventoryFlow.search(b, pn, cn, pageNumber, pageSize);
+
+        List<InventoryData> dataList = new ArrayList<>();
         for (Inventory inventory : inventories) {
             try {
                 String invBarcode = inventoryFlow.getBarcode(inventory.getProductId());
@@ -52,11 +67,11 @@ public class InventoryDto extends AbstractDto {
                         InventoryConversion.convertPojoToData(inventory, invBarcode, invProductName)
                 );
             } catch (Exception e) {
-                // If you want, replace with logger (recommended) instead of System.out
                 System.out.println("Skipping invalid inventory record for ID: " + inventory.getId());
             }
         }
 
-        return dataList;
+        Long totalCount = inventoryFlow.getCount(b, pn, cn);
+        return PaginatedResponse.of(dataList, totalCount, pageNumber);
     }
 }
