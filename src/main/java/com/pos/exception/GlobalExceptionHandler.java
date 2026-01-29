@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 
 import java.io.IOException;
 import java.util.Map;
@@ -127,6 +129,41 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "An unexpected system error occurred."));
     }
+
+    /**
+     * 0️⃣ Security: Not logged in (no JWT / no Authentication)
+     */
+    @ExceptionHandler(AuthenticationCredentialsNotFoundException.class)
+    public ResponseEntity<?> handleNotLoggedIn(
+            AuthenticationCredentialsNotFoundException ex,
+            HttpServletRequest request) {
+
+        if (expectsPdf(request)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", "You are not logged in"));
+    }
+
+    /**
+     * 0️⃣ Security: Logged in but not allowed (e.g., not SUPERVISOR)
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleForbidden(
+            AccessDeniedException ex,
+            HttpServletRequest request) {
+
+        if (expectsPdf(request)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(Map.of("message", "You are not allowed to perform this action (Supervisor only)"));
+    }
+
 
     // Helper
     private boolean expectsPdf(HttpServletRequest request) {

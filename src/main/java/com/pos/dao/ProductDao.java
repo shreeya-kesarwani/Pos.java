@@ -52,4 +52,14 @@ public class ProductDao extends BaseDao {
                 .getResultList();
     }
 
+    public List<Product> selectByBarcodes(List<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) return List.of();
+
+        String jpql = "SELECT p FROM Product p WHERE p.barcode IN :barcodes";
+        return em().createQuery(jpql, Product.class)
+                .setParameter("barcodes", barcodes)
+                .getResultList();
+    }
+
+
 }

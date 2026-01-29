@@ -68,4 +68,11 @@ public class ClientApi {
     public Long getCount(Integer id, String name, String email) {
         return clientDao.getCount(id, name, email);
     }
+
+    @Transactional(readOnly = true)
+    public List<Client> getByNames(List<String> names) {
+        if (names == null || names.isEmpty()) return List.of();
+        return clientDao.selectByNames(names);
+    }
+
 }

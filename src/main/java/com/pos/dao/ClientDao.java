@@ -32,4 +32,14 @@ public class ClientDao extends BaseDao {
                 .setParameter("email", email != null ? "%" + email + "%" : null)
                 .getSingleResult();
     }
+
+    public List<Client> selectByNames(List<String> names) {
+        if (names == null || names.isEmpty()) return List.of();
+
+        String jpql = "SELECT c FROM Client c WHERE c.name IN :names";
+        return em().createQuery(jpql, Client.class)
+                .setParameter("names", names)
+                .getResultList();
+    }
+
 }

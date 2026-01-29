@@ -141,4 +141,18 @@ public class ProductApi {
         return productDao.selectByIds(ids);
     }
 
+    @Transactional(readOnly = true)
+    public List<Product> getByBarcodes(List<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) return List.of();
+        return productDao.selectByBarcodes(barcodes);
+    }
+
+    public void addWithoutBarcodeCheck(Product product) throws ApiException {
+        if (product == null) throw new ApiException("Product cannot be null");
+        if (product.getBarcode() == null || product.getBarcode().trim().isEmpty()) {
+            throw new ApiException("Product barcode cannot be empty");
+        }
+        productDao.insert(product);
+    }
+
 }
