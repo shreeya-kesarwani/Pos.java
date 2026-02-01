@@ -1,6 +1,6 @@
 package com.pos.security;
 
-import com.pos.pojo.UserRole;
+import com.pos.model.constants.UserRole;
 import lombok.Getter;
 
 @Getter

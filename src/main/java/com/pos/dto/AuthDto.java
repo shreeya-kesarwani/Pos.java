@@ -23,10 +23,10 @@ public class AuthDto extends AbstractDto {
         normalize(form);
         validateForm(form);
 
-        form.setEmail(normalizeEmailLowercase(form.getEmail()));
-        // password already trimmed by AbstractDto; do NOT lowercase it
+        String email = normalizeEmailLowercase(form.getEmail());
+        String password = form.getPassword(); // keep as-is (do NOT lowercase)
 
-        User user = authApi.signup(form);
+        User user = authApi.signup(email, password);
 
         AuthData data = new AuthData();
         data.setUserId(user.getId());
@@ -39,8 +39,10 @@ public class AuthDto extends AbstractDto {
         normalize(form);
         validateForm(form);
 
-        form.setEmail(normalizeEmailLowercase(form.getEmail()));
-        return authApi.login(form);
+        String email = normalizeEmailLowercase(form.getEmail());
+        String password = form.getPassword();
+
+        return authApi.login(email, password);
     }
 
     public void changePassword(ChangePasswordForm form) throws ApiException {
@@ -53,7 +55,11 @@ public class AuthDto extends AbstractDto {
                         .getAuthentication()
                         .getPrincipal();
 
-        authApi.changePassword(principal.getUserId(), form);
+        authApi.changePassword(
+                principal.getUserId(),
+                form.getCurrentPassword(),
+                form.getNewPassword()
+        );
     }
 
     private String normalizeEmailLowercase(String email) throws ApiException {

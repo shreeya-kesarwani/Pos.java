@@ -21,9 +21,9 @@ public class SalesReportDao extends BaseDao {
                         "p.name AS productName, " +
                         "COALESCE(SUM(oi.quantity), 0) AS quantity, " +
                         "COALESCE(SUM(oi.quantity * oi.selling_price), 0) AS revenue " +
-                        "FROM orders o " +
-                        "JOIN order_item oi ON oi.order_id = o.id " +
-                        "JOIN product p ON p.id = oi.product_id " +
+                        "FROM pos_order o " +
+                        "JOIN pos_order_item oi ON oi.order_id = o.id " +
+                        "JOIN pos_product p ON p.id = oi.product_id " +
                         "WHERE o.status = 'INVOICED' " +
                         "AND DATE(o.updated_at) BETWEEN :startDate AND :endDate " +
                         "AND (:clientId IS NULL OR p.client_id = :clientId) " +

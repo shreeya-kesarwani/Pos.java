@@ -7,7 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(rollbackFor = ApiException.class)
@@ -15,6 +16,8 @@ public class ProductApi {
 
     @Autowired
     private ProductDao productDao;
+
+    // ---------- Basic getters ----------
 
     public Product get(Integer id) throws ApiException {
         if (id == null) {
@@ -24,7 +27,7 @@ public class ProductApi {
     }
 
     public Product getCheck(Integer id) throws ApiException {
-        Product product = get(id); // will throw if id is null
+        Product product = get(id);
         if (product == null) {
             throw new ApiException(String.format("Product with ID %d does not exist", id));
         }
@@ -32,16 +35,22 @@ public class ProductApi {
     }
 
     public Product getByBarcode(String barcode) throws ApiException {
-        if (barcode == null || barcode.trim().isEmpty()) {
+        String b = normalizeBarcode(barcode);
+        if (b == null) {
             throw new ApiException("Barcode cannot be empty");
         }
-        return productDao.selectByBarcode(barcode.trim());
+
+        // ProductDao does not have selectByBarcode in your latest paste,
+        // so we fetch via IN query.
+        List<Product> list = productDao.selectByBarcodes(List.of(b));
+        return list.isEmpty() ? null : list.get(0);
     }
 
     public Product getCheckByBarcode(String barcode) throws ApiException {
-        Product product = getByBarcode(barcode); // validates barcode
+        String b = normalizeBarcode(barcode);
+        Product product = getByBarcode(b);
         if (product == null) {
-            throw new ApiException(String.format("Product with barcode [%s] not found", barcode));
+            throw new ApiException(String.format("Product with barcode [%s] not found", b));
         }
         return product;
     }
@@ -58,19 +67,80 @@ public class ProductApi {
         return getCheck(productId).getName();
     }
 
+    // ---------- Bulk fetchers (fix for your build errors) ----------
+
+    @Transactional(readOnly = true)
+    public List<Product> getByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return productDao.selectByIds(ids);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Product> getByBarcodes(List<String> barcodes) {
+        List<String> normalized = normalizeBarcodes(barcodes);
+        if (normalized.isEmpty()) return List.of();
+        return productDao.selectByBarcodes(normalized);
+    }
+
+    /**
+     * Bulk "check" method: throws if ANY barcode does not exist.
+     * Useful for OrderFlow, etc.
+     */
+    @Transactional(readOnly = true)
+    public List<Product> getCheckByBarcodes(List<String> barcodes) throws ApiException {
+        List<String> normalized = normalizeBarcodes(barcodes);
+        if (normalized.isEmpty()) {
+            throw new ApiException("Barcodes cannot be empty");
+        }
+
+        List<Product> found = productDao.selectByBarcodes(normalized);
+
+        Set<String> foundSet = found.stream()
+                .map(p -> p.getBarcode() == null ? null : p.getBarcode().trim())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        List<String> missing = normalized.stream()
+                .filter(b -> !foundSet.contains(b))
+                .toList();
+
+        if (!missing.isEmpty()) {
+            throw new ApiException("Products not found for barcodes: " + missing);
+        }
+
+        return found;
+    }
+
+    // ---------- Create / Update ----------
+
     public void add(Product product) throws ApiException {
         if (product == null) {
             throw new ApiException("Product cannot be null");
         }
-        if (product.getBarcode() == null || product.getBarcode().trim().isEmpty()) {
+
+        String barcode = normalizeBarcode(product.getBarcode());
+        if (barcode == null) {
             throw new ApiException("Product barcode cannot be empty");
         }
+        product.setBarcode(barcode);
 
-        String barcode = product.getBarcode();
         if (getByBarcode(barcode) != null) {
             throw new ApiException(String.format("Product with barcode [%s] already exists", barcode));
         }
 
+        productDao.insert(product);
+    }
+
+    /**
+     * Used in bulk upload when duplicates are checked elsewhere (or intentionally allowed).
+     */
+    public void addWithoutBarcodeCheck(Product product) throws ApiException {
+        if (product == null) throw new ApiException("Product cannot be null");
+
+        String barcode = normalizeBarcode(product.getBarcode());
+        if (barcode == null) throw new ApiException("Product barcode cannot be empty");
+
+        product.setBarcode(barcode);
         productDao.insert(product);
     }
 
@@ -79,17 +149,24 @@ public class ProductApi {
             throw new ApiException("Product cannot be null");
         }
 
+        Product existing = getCheckByBarcode(barcode);
+
+        // name validation
         if (product.getName() == null || product.getName().trim().isEmpty()) {
             throw new ApiException("Product name cannot be empty");
         }
+
+        // mrp validation
         if (product.getMrp() == null) {
             throw new ApiException("Product mrp cannot be null");
         }
+        if (product.getMrp() < 0) {
+            throw new ApiException("Product mrp cannot be negative");
+        }
 
-        Product existing = getCheckByBarcode(barcode);
-
-        String newBarcode = product.getBarcode();
-        if (newBarcode == null || newBarcode.isEmpty()) {
+        // barcode update + uniqueness check
+        String newBarcode = normalizeBarcode(product.getBarcode());
+        if (newBarcode == null) {
             throw new ApiException("Product barcode cannot be empty");
         }
 
@@ -100,10 +177,15 @@ public class ProductApi {
             }
             existing.setBarcode(newBarcode);
         }
-        existing.setName(product.getName());
+
+        existing.setName(product.getName().trim());
         existing.setMrp(product.getMrp());
-        existing.setImageUrl(product.getImageUrl() == null ? null : product.getImageUrl());
+        existing.setImageUrl(product.getImageUrl() == null ? null : product.getImageUrl().trim());
+        // No explicit DAO update needed if JPA dirty checking is on and the entity is managed.
+        // If your DAO requires explicit update, call productDao.update(existing).
     }
+
+    // ---------- Search / Count ----------
 
     @Transactional(readOnly = true)
     public List<Product> search(String name, String barcode, String clientName, int page, int size) {
@@ -115,6 +197,8 @@ public class ProductApi {
         return productDao.getCount(name, barcode, clientName);
     }
 
+    // ---------- Business rules ----------
+
     public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
         if (productId == null) {
             throw new ApiException("Product id cannot be null");
@@ -122,8 +206,12 @@ public class ProductApi {
         if (sellingPrice == null) {
             throw new ApiException("Selling price cannot be null");
         }
+        if (sellingPrice < 0) {
+            throw new ApiException("Selling price cannot be negative");
+        }
 
         Product product = getCheck(productId);
+
         if (product.getMrp() == null) {
             throw new ApiException("MRP is not set for product: " + productId);
         }
@@ -135,24 +223,22 @@ public class ProductApi {
         }
     }
 
-    @Transactional(readOnly = true)
-    public List<Product> getByIds(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
-        return productDao.selectByIds(ids);
+    // ---------- Helpers ----------
+
+    private static String normalizeBarcode(String barcode) {
+        if (barcode == null) return null;
+        String b = barcode.trim();
+        return b.isEmpty() ? null : b;
     }
 
-    @Transactional(readOnly = true)
-    public List<Product> getByBarcodes(List<String> barcodes) {
-        if (barcodes == null || barcodes.isEmpty()) return List.of();
-        return productDao.selectByBarcodes(barcodes);
-    }
+    private static List<String> normalizeBarcodes(List<String> barcodes) {
+        if (barcodes == null) return List.of();
 
-    public void addWithoutBarcodeCheck(Product product) throws ApiException {
-        if (product == null) throw new ApiException("Product cannot be null");
-        if (product.getBarcode() == null || product.getBarcode().trim().isEmpty()) {
-            throw new ApiException("Product barcode cannot be empty");
-        }
-        productDao.insert(product);
+        return barcodes.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .toList();
     }
-
 }

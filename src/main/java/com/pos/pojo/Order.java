@@ -1,6 +1,6 @@
 package com.pos.pojo;
 
-import com.pos.model.data.OrderStatus;
+import com.pos.model.constants.OrderStatus;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +8,11 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-@Table (name = "Orders")
+@Table(
+        indexes = {
+                @Index(name = "order_status_idx", columnList = "status")
+        }
+)
 public class Order extends AbstractPojo {
 
     @Id

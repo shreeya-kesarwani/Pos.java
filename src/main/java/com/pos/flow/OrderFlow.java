@@ -6,12 +6,12 @@ import com.pos.api.OrderItemApi;
 import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.model.data.OrderItemData;
-import com.pos.model.data.OrderStatus;
+import com.pos.model.constants.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.InvoiceItemForm;
+import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
 import com.pos.pojo.Order;
-import com.pos.model.form.OrderForm;
 import com.pos.pojo.OrderItem;
 import com.pos.pojo.Product;
 import com.pos.utils.OrderConversion;
@@ -22,34 +22,61 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Component
-@Transactional(rollbackFor = Exception.class)
+@Transactional(rollbackFor = ApiException.class)
 public class OrderFlow {
 
-    @Autowired
-    private OrderApi orderApi;
-    @Autowired
-    private OrderItemApi orderItemApi;
-    @Autowired
-    private InventoryApi inventoryApi;
-    @Autowired
-    private ProductApi productApi;
+    @Autowired private OrderApi orderApi;
+    @Autowired private OrderItemApi orderItemApi;
+    @Autowired private InventoryApi inventoryApi;
+    @Autowired private ProductApi productApi;
 
     public Integer createOrder(OrderForm form) throws ApiException {
 
-        Order order = orderApi.create();
+        // 1) Create Order Pojo in Flow and persist via API
+        Order order = new Order();
+        order.setStatus(OrderStatus.CREATED);
+        orderApi.add(order);
+
+        // 2) Collect barcodes once, normalize, and validate
+        List<String> barcodes = extractAndValidateBarcodes(form);
+
+        // 3) Single DB call to fetch ALL products for barcodes
+        List<Product> products = productApi.getCheckByBarcodes(barcodes);
+
+        // 4) Map barcode -> product
+        Map<String, Product> barcodeToProduct = products.stream()
+                .collect(Collectors.toMap(
+                        p -> p.getBarcode().trim(),
+                        p -> p
+                ));
+
+        // 5) Process items using the map (no extra DB calls)
         for (OrderItemForm itemForm : form.getItems()) {
-            String barcode = itemForm.getBarcode();
-            if (barcode == null || barcode.trim().isEmpty()) {
-                throw new ApiException("Barcode cannot be empty");
+            String barcode = itemForm.getBarcode().trim();
+            Product product = barcodeToProduct.get(barcode);
+
+            if (product == null) {
+                // Should not happen if getCheckByBarcodes validates properly, but safe.
+                throw new ApiException("Product not found for barcode: " + barcode);
             }
 
-            Integer productId = productApi.getIdByBarcode(barcode.trim());
-            productApi.validateSellingPrice(productId, itemForm.getSellingPrice());
-            inventoryApi.allocate(productId, itemForm.getQuantity());
-            orderItemApi.add(order.getId(), productId, itemForm.getQuantity(), itemForm.getSellingPrice());
+            validateSellingPrice(itemForm.getSellingPrice());
+            productApi.validateSellingPrice(product.getId(), itemForm.getSellingPrice());
+
+            inventoryApi.allocate(product.getId(), itemForm.getQuantity());
+
+            orderItemApi.add(
+                    order.getId(),
+                    product.getId(),
+                    itemForm.getQuantity(),
+                    itemForm.getSellingPrice()
+            );
         }
+
         return order.getId();
     }
 
@@ -68,8 +95,7 @@ public class OrderFlow {
     }
 
     @Transactional(readOnly = true)
-    public List<OrderItemData> getOrderItemData(Integer orderId)
-            throws ApiException {
+    public List<OrderItemData> getOrderItemData(Integer orderId) throws ApiException {
         List<OrderItem> items = orderItemApi.getByOrderId(orderId);
         List<OrderItemData> data = new ArrayList<>();
         for (OrderItem item : items) {
@@ -86,13 +112,12 @@ public class OrderFlow {
     }
 
     @Transactional(readOnly = true)
-    public InvoiceForm buildInvoiceForm(Integer orderId)
-            throws ApiException {
-
+    public InvoiceForm buildInvoiceForm(Integer orderId) throws ApiException {
         Order order = orderApi.getCheck(orderId);
         if (order.getStatus() == OrderStatus.INVOICED) {
             throw new ApiException("Order already invoiced");
         }
+
         InvoiceForm form = new InvoiceForm();
         form.setOrderId(orderId);
         form.setItems(buildInvoiceItems(orderId));
@@ -100,9 +125,7 @@ public class OrderFlow {
     }
 
     @Transactional(readOnly = true)
-    private List<InvoiceItemForm> buildInvoiceItems(Integer orderId)
-            throws ApiException {
-
+    private List<InvoiceItemForm> buildInvoiceItems(Integer orderId) throws ApiException {
         List<OrderItem> orderItems = orderItemApi.getByOrderId(orderId);
         List<InvoiceItemForm> invoiceItems = new ArrayList<>();
         for (OrderItem item : orderItems) {
@@ -116,8 +139,7 @@ public class OrderFlow {
         return invoiceItems;
     }
 
-    public void attachInvoice(Integer orderId, String path)
-            throws ApiException {
+    public void attachInvoice(Integer orderId, String path) throws ApiException {
         orderApi.attachInvoice(orderId, path);
     }
 
@@ -136,4 +158,30 @@ public class OrderFlow {
         }
     }
 
+    // -------------------- helpers --------------------
+
+    private static List<String> extractAndValidateBarcodes(OrderForm form) throws ApiException {
+        if (form == null || form.getItems() == null || form.getItems().isEmpty()) {
+            throw new ApiException("Order must contain at least one item");
+        }
+
+        List<String> barcodes = new ArrayList<>();
+        for (OrderItemForm itemForm : form.getItems()) {
+            if (itemForm == null || itemForm.getBarcode() == null || itemForm.getBarcode().trim().isEmpty()) {
+                throw new ApiException("Barcode cannot be empty");
+            }
+            barcodes.add(itemForm.getBarcode().trim());
+        }
+        return barcodes;
+    }
+
+    // reviewer comment: "static private method for validateSellingPrice in this class only"
+    private static void validateSellingPrice(Double sellingPrice) throws ApiException {
+        if (sellingPrice == null) {
+            throw new ApiException("Selling price cannot be null");
+        }
+        if (sellingPrice < 0) {
+            throw new ApiException("Selling price cannot be negative");
+        }
+    }
 }

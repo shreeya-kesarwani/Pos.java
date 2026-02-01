@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"orderId","productId"})
+        @UniqueConstraint(name = "OrderItem_orderId_productId_uk", columnNames = {"orderId","productId"})
 })
 public class OrderItem extends AbstractPojo {
 

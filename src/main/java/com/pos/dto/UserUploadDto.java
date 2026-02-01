@@ -4,7 +4,7 @@ import com.pos.api.UserApi;
 import com.pos.exception.ApiException;
 import com.pos.exception.UploadValidationException;
 import com.pos.pojo.User;
-import com.pos.pojo.UserRole;
+import com.pos.model.constants.UserRole;
 import com.pos.utils.TsvParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -57,7 +57,7 @@ public class UserUploadDto extends AbstractDto {
                 User user = new User();
                 user.setEmail(email);
                 user.setRole(role);
-                user.setPasswordHash(password); // hashed later
+                user.setPasswordHash(password);
                 toCreateOrUpdate.add(user);
 
             } catch (ApiException ex) {
@@ -82,8 +82,6 @@ public class UserUploadDto extends AbstractDto {
                     "text/tab-separated-values"
             );
         }
-
-        // All-or-nothing DB writes
         userApi.bulkCreateOrUpdate(toCreateOrUpdate);
     }
 

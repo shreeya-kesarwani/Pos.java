@@ -36,22 +36,6 @@ public class ProductDao extends BaseDao {
                 .getSingleResult();
     }
 
-    public Product selectByBarcode(String barcode) {
-        String jpql = "SELECT p FROM Product p WHERE p.barcode = :barcode";
-        return em().createQuery(jpql, Product.class)
-                .setParameter("barcode", barcode)
-                .getResultList().stream().findFirst().orElse(null);
-    }
-
-    public List<Product> selectByIds(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
-
-        String jpql = "SELECT p FROM Product p WHERE p.id IN :ids";
-        return em().createQuery(jpql, Product.class)
-                .setParameter("ids", ids)
-                .getResultList();
-    }
-
     public List<Product> selectByBarcodes(List<String> barcodes) {
         if (barcodes == null || barcodes.isEmpty()) return List.of();
 
@@ -61,5 +45,14 @@ public class ProductDao extends BaseDao {
                 .getResultList();
     }
 
+
+    public List<Product> selectByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+
+        String jpql = "SELECT p FROM Product p WHERE p.id IN :ids";
+        return em().createQuery(jpql, Product.class)
+                .setParameter("ids", ids)
+                .getResultList();
+    }
 
 }

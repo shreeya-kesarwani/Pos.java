@@ -3,11 +3,8 @@ package com.pos.api;
 import com.pos.dao.UserDao;
 import com.pos.exception.ApiException;
 import com.pos.model.data.AuthData;
-import com.pos.model.form.ChangePasswordForm;
-import com.pos.model.form.LoginForm;
-import com.pos.model.form.SignupForm;
 import com.pos.pojo.User;
-import com.pos.pojo.UserRole;
+import com.pos.model.constants.UserRole;
 import com.pos.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,32 +20,31 @@ public class AuthApi {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    public User signup(SignupForm form) throws ApiException {
-        String email = normalizeEmail(form.getEmail());
-        validatePassword(form.getPassword());
+    public User signup(String email, String password) throws ApiException {
+        String normalizedEmail = normalizeEmail(email);
+        validatePassword(password);
 
-        if (userDao.findByEmail(email).isPresent()) {
+        if (userDao.findByEmail(normalizedEmail).isPresent()) {
             throw new ApiException("Email already registered");
         }
 
         User user = new User();
-        user.setEmail(email);
-        user.setPasswordHash(encoder.encode(form.getPassword()));
-        user.setRole(UserRole.OPERATOR); // ✅ default on self-signup
+        user.setEmail(normalizedEmail);
+        user.setPasswordHash(encoder.encode(password));
+        user.setRole(UserRole.SUPERVISOR); // ✅ same behavior as before
 
         userDao.save(user);
         return user;
     }
 
-
     @Transactional(readOnly = true)
-    public AuthData login(LoginForm form) throws ApiException {
-        String email = normalizeEmail(form.getEmail());
+    public AuthData login(String email, String password) throws ApiException {
+        String normalizedEmail = normalizeEmail(email);
 
-        User user = userDao.findByEmail(email)
+        User user = userDao.findByEmail(normalizedEmail)
                 .orElseThrow(() -> new ApiException("Invalid credentials"));
 
-        if (!encoder.matches(form.getPassword(), user.getPasswordHash())) {
+        if (!encoder.matches(password, user.getPasswordHash())) {
             throw new ApiException("Invalid credentials");
         }
 
@@ -61,21 +57,19 @@ public class AuthApi {
         return data;
     }
 
-    public void changePassword(Integer userId, ChangePasswordForm form) throws ApiException {
-
+    public void changePassword(Integer userId, String currentPassword, String newPassword) throws ApiException {
         User user = userDao.findById(userId)
                 .orElseThrow(() -> new ApiException("User not found"));
 
-        if (!encoder.matches(form.getCurrentPassword(), user.getPasswordHash())) {
+        if (!encoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ApiException("Current password is incorrect");
         }
 
-        validatePassword(form.getNewPassword());
+        validatePassword(newPassword);
 
-        user.setPasswordHash(encoder.encode(form.getNewPassword()));
+        user.setPasswordHash(encoder.encode(newPassword));
         userDao.save(user);
     }
-
 
     private String normalizeEmail(String email) throws ApiException {
         if (email == null || email.trim().isEmpty()) {

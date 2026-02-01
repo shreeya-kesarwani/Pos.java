@@ -1,0 +1,10 @@
+/clients,POST,SUPERVISOR
+/clients/*,PUT,SUPERVISOR
+
+/products,POST,SUPERVISOR
+/products/*,PUT,SUPERVISOR
+/products/upload,POST,SUPERVISOR
+
+/inventory/upload,POST,SUPERVISOR
+
+/reports/*,GET,SUPERVISOR

@@ -1,7 +1,9 @@
 package com.pos.dao;
 
 import com.pos.pojo.User;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
+import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;

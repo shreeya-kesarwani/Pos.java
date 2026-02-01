@@ -44,7 +44,8 @@ public class ProductController {
     }
 
     @RequestMapping(value = "/{barcode}", method = RequestMethod.PUT)
-    public void update(@PathVariable String barcode, @Valid @RequestBody ProductForm productForm) throws ApiException {
+    public void update(@PathVariable String barcode,
+                       @Valid @RequestBody ProductForm productForm) throws ApiException {
         productDto.update(barcode, productForm);
     }
 

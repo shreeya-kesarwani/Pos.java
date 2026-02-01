@@ -1,5 +1,6 @@
 package com.pos.pojo;
 
+import com.pos.model.constants.UserRole;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.Getter;
@@ -7,7 +8,7 @@ import lombok.Setter;
 
 @Entity
 @Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = "email")
+        @UniqueConstraint(name= "User_email_uk", columnNames = "email")
 })
 @Getter
 @Setter
@@ -23,14 +24,10 @@ public class User extends AbstractPojo {
 
     @Column(nullable = false)
     private String passwordHash;
+    //todo rename to password - which hashing algo used, which library
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
-
-    @PrePersist
-    @PreUpdate
-    private void normalize() {
-        if (email != null) email = email.trim().toLowerCase();
-    }
+    //todo- add enums in a folder called constants in model
 }

@@ -30,12 +30,6 @@ public class OrderDto extends AbstractDto {
     public Integer create(@Valid OrderForm form) throws ApiException {
 
         normalize(form);
-
-        if (form.getItems() == null || form.getItems().isEmpty()) {
-            throw new ApiException("Order must contain at least one item");
-        }
-
-        // ✅ No ProductApi call here
         return orderFlow.createOrder(form);
     }
 

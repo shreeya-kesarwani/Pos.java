@@ -1,23 +1,29 @@
 package com.pos.pojo;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 
 @Entity
-
+@Table(
+        uniqueConstraints = {
+                @UniqueConstraint(name = "DaySales_date_uk",columnNames = {"date"})
+        }
+)
 @Getter
 @Setter
 public class DaySales {
 
     @Id
-    private LocalDate date;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false)
+    private ZonedDateTime date;
 
     @Column(nullable = false)
     private Integer invoicedOrdersCount;
@@ -26,5 +32,5 @@ public class DaySales {
     private Integer invoicedItemsCount;
 
     @Column(nullable = false)
-    private BigDecimal totalRevenue;
+    private double totalRevenue;
 }

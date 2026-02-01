@@ -1,17 +1,19 @@
 package com.pos.dto;
 
+import com.pos.client.InvoiceClient;
 import com.pos.exception.ApiException;
 import com.pos.flow.OrderFlow;
 import com.pos.model.data.InvoiceData;
-import com.pos.model.data.OrderStatus;
+import com.pos.model.constants.OrderStatus;
 import com.pos.model.form.InvoiceForm;
 import com.pos.pojo.Order;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,13 +31,10 @@ public class InvoiceDto {
     private OrderFlow orderFlow;
 
     @Autowired
-    private RestTemplate restTemplate;
+    private InvoiceClient invoiceClient;
 
     @Autowired
     private Validator validator;
-
-    @Value("${invoice.service.url}")
-    private String invoiceServiceUrl;
 
     public InvoiceData generate(Integer orderId) throws ApiException {
 
@@ -46,30 +45,20 @@ public class InvoiceDto {
             throw new ApiException(violations.iterator().next().getMessage());
         }
 
-        InvoiceData data =
-                restTemplate.postForObject(
-                        invoiceServiceUrl,
-                        form,
-                        InvoiceData.class
-                );
+        InvoiceData data = invoiceClient.generate(form);
 
         if (data == null || data.getBase64Pdf() == null) {
             throw new ApiException("Failed to generate invoice");
         }
 
-        byte[] pdfBytes =
-                Base64.getDecoder().decode(data.getBase64Pdf());
+        byte[] pdfBytes = Base64.getDecoder().decode(data.getBase64Pdf());
 
         try {
             Files.createDirectories(Paths.get(INVOICE_DIR));
-
-            Path path =
-                    Paths.get(INVOICE_DIR + "INV-" + orderId + ".pdf");
-
+            Path path = Paths.get(INVOICE_DIR + "INV-" + orderId + ".pdf");
             Files.write(path, pdfBytes);
 
             orderFlow.attachInvoice(orderId, path.toString());
-
         } catch (Exception e) {
             throw new ApiException("Failed to store invoice PDF", e);
         }
@@ -82,17 +71,12 @@ public class InvoiceDto {
         Order order = orderFlow.getOrder(orderId);
 
         if (order.getStatus() != OrderStatus.INVOICED) {
-            throw new ApiException(
-                    "Invoice not generated yet for order: " + orderId
-            );
+            throw new ApiException("Invoice not generated yet for order: " + orderId);
         }
 
         String path = order.getInvoicePath();
-
-        if (path == null) {
-            throw new ApiException(
-                    "Invoice path missing for order: " + orderId
-            );
+        if (path == null || path.trim().isEmpty()) {
+            throw new ApiException("Invoice path missing for order: " + orderId);
         }
 
         try {
@@ -100,5 +84,15 @@ public class InvoiceDto {
         } catch (IOException e) {
             throw new ApiException("Failed to read invoice file", e);
         }
+    }
+
+    public ResponseEntity<byte[]> downloadResponse(Integer orderId) throws ApiException {
+        byte[] pdf = download(orderId);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=INV-" + orderId + ".pdf")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

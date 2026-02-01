@@ -1,4 +1,4 @@
-package com.pos.model.data;
+package com.pos.model.constants;
 
 public enum OrderStatus {
     CREATED,

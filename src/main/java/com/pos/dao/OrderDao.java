@@ -1,6 +1,6 @@
 package com.pos.dao;
 
-import com.pos.model.data.OrderStatus;
+import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.Order;
 import org.springframework.stereotype.Repository;
 

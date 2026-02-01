@@ -2,30 +2,24 @@ package com.pos.controller;
 
 import com.pos.model.data.SessionData;
 import com.pos.security.AuthPrincipal;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
 public class SessionController {
 
-    @RequestMapping(value = "/session", method = RequestMethod.GET)
-    public SessionData session(Authentication authentication) {
+    @GetMapping("/session")
+    public SessionData session(@AuthenticationPrincipal AuthPrincipal principal) {
 
-        if (authentication == null || authentication.getPrincipal() == null) {
-            return new SessionData();
-        }
-
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof AuthPrincipal p)) {
+        // Not logged in OR token invalid
+        if (principal == null) {
             return new SessionData();
         }
 
         SessionData data = new SessionData();
-        data.setUserId(p.getUserId());
-        data.setRole(p.getRole());
+        data.setUserId(principal.getUserId());
+        data.setRole(principal.getRole());
         return data;
     }
 }

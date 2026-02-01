@@ -65,7 +65,7 @@ public class InventoryApi {
         if (quantity == null || quantity <= 0) {
             throw new ApiException("Quantity must be > 0");
         }
-
+        //todo can use getCheckbyprodid ->no neeed for this if validation again
         Inventory inventory = getByProductId(productId);
         if (inventory == null) {
             throw new ApiException("Inventory not found for productId: " + productId);
@@ -75,8 +75,8 @@ public class InventoryApi {
         }
 
         inventory.setQuantity(inventory.getQuantity() - quantity);
-        // your update() copies quantity into managed entity (dirty checking will persist it)
-        update(inventory.getId(), inventory);
+//        // your update() copies quantity into managed entity (dirty checking will persist it)
+//        update(inventory.getId(), inventory);
     }
 
 

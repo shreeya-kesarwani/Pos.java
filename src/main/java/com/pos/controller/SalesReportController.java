@@ -18,8 +18,7 @@ public class SalesReportController {
     private SalesReportDto salesReportDto;
 
     @RequestMapping(method = RequestMethod.GET)
-    public List<SalesReportData> get(@Valid @ModelAttribute SalesReportForm form) throws ApiException {
-        salesReportDto.validate_form(form);
-        return salesReportDto.getCheck();
+    public List<SalesReportData> get(@Valid SalesReportForm form) throws ApiException {
+        return salesReportDto.getCheck(form);
     }
 }
