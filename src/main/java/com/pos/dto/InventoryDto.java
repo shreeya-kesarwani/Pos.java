@@ -1,8 +1,6 @@
 package com.pos.dto;
 
-import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
-import com.pos.exception.BulkUploadException;
 import com.pos.exception.UploadValidationException;
 import com.pos.flow.InventoryFlow;
 import com.pos.model.data.InventoryData;
@@ -11,110 +9,60 @@ import com.pos.model.form.InventoryForm;
 import com.pos.pojo.Inventory;
 import com.pos.pojo.Product;
 import com.pos.utils.InventoryConversion;
-import com.pos.utils.TsvParser;
+import com.pos.utils.InventoryTsvParser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class InventoryDto extends AbstractDto {
 
-    @Autowired private InventoryFlow inventoryFlow;
-    @Autowired private ProductApi productApi;
+    @Autowired
+    private InventoryFlow inventoryFlow;
 
     public void upload(MultipartFile file) throws ApiException, IOException {
-        List<String[]> rows = TsvParser.read(file.getInputStream());
-        TsvParser.validateHeader(rows.get(0), "barcode", "quantity");
 
-        List<String> errors = new ArrayList<>();
-        List<Inventory> pojos = new ArrayList<>();
-        List<String> barcodes = new ArrayList<>();
+        InventoryTsvParser.InventoryTsvParseResult parsed = InventoryTsvParser.parse(file);
+        List<Inventory> inventories = parsed.forms().stream()
+                .map(InventoryConversion::convertFormToPojo)
+                .toList();
 
-        for (int i = 1; i < rows.size(); i++) {
-            String[] r = rows.get(i);
-            String err = null;
-
-            try {
-                InventoryForm form = new InventoryForm();
-                form.setBarcode(TsvParser.s(r, 0));
-
-                String qStr = TsvParser.s(r, 1);
-                if (qStr.isEmpty()) throw new ApiException("quantity is required");
-                try {
-                    form.setQuantity(Integer.parseInt(qStr));
-                } catch (NumberFormatException e) {
-                    throw new ApiException("Invalid quantity");
-                }
-
-                validateForm(form);
-                normalize(form);
-
-                productApi.getCheckByBarcode(form.getBarcode());
-
-                Inventory inv = InventoryConversion.convertFormToPojo(form);
-                pojos.add(inv);
-                barcodes.add(form.getBarcode());
-
-            } catch (ApiException ex) {
-                err = "Line " + (i + 1) + ": " + ex.getMessage();
-            } catch (Exception ex) {
-                err = "Line " + (i + 1) + ": Invalid row";
-            }
-            errors.add(err);
-        }
-        boolean hasAnyError = errors.stream().anyMatch(Objects::nonNull);
-        if (hasAnyError) {
-            byte[] errorTsv = TsvParser.buildErrorTsv(rows, errors);
-            String fname = "inventory_upload_errors_" + LocalDateTime.now().toString().replace(":", "-") + ".tsv";
-            throw new UploadValidationException(
-                    "TSV has errors",
-                    errorTsv,
-                    "inventory_upload_errors.tsv",
-                    "text/tab-separated-values"
-            );
-        }
-        inventoryFlow.upsertBulk(pojos, barcodes);
+        inventoryFlow.upsertBulk(inventories, parsed.barcodes());
     }
 
-    public PaginatedResponse<InventoryData> getAll(
-            String barcode, String productName, String clientName,
-            Integer page, Integer size) throws ApiException {
+    public PaginatedResponse<InventoryData> getAll(String barcode, String productName, String clientName, Integer pageNumber, Integer pageSize) throws ApiException {
 
-        int pageNumber = (page == null) ? 0 : page;
-        int pageSize = (size == null) ? 10 : size;
+        String normalised_barcode = normalize(barcode);
+        String normalised_productName = normalize(productName);
+        String normalised_clientName = normalize(clientName);
 
-        String b = normalize(barcode);
-        String pn = normalize(productName);
-        String cn = normalize(clientName);
+        List<Inventory> inventories = inventoryFlow.search(normalised_barcode, normalised_productName, normalised_clientName, pageNumber, pageSize);
 
-        List<Inventory> inventories = inventoryFlow.search(b, pn, cn, pageNumber, pageSize);
-        java.util.Set<Integer> productIds = new java.util.HashSet<>();
-        for (Inventory inv : inventories) {
-            if (inv.getProductId() != null) productIds.add(inv.getProductId());
-        }
+        Set<Integer> productIds = inventories.stream()
+                .map(Inventory::getProductId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
 
-        List<Product> products = productApi.getByIds(new java.util.ArrayList<>(productIds));
-        java.util.Map<Integer, Product> productMap = new java.util.HashMap<>();
-        for (Product p : products) {
-            productMap.put(p.getId(), p);
-        }
+        List<Product> products = inventoryFlow.getProductsByIds(productIds);
 
-        List<InventoryData> dataList = new ArrayList<>();
-        for (Inventory inventory : inventories) {
-            Product p = productMap.get(inventory.getProductId());
-            if (p == null) {
-                System.out.println("Skipping inventory id=" + inventory.getId()
-                        + " due to missing productId=" + inventory.getProductId());
-                continue;
-            }
-            dataList.add(InventoryConversion.convertPojoToData(inventory, p.getBarcode(), p.getName()));
-        }
+        Map<Integer, Product> productMap = products.stream()
+                .collect(Collectors.toMap(Product::getId, p -> p, (a, b2) -> a));
 
-        Long totalCount = inventoryFlow.getCount(b, pn, cn);
+        List<InventoryData> dataList = inventories.stream()
+                .map(inv -> {
+                    Product p = productMap.get(inv.getProductId());
+
+                    if (p == null) return null;
+                    return InventoryConversion.convertPojoToData(inv, p.getBarcode(), p.getName());
+                })
+                .filter(Objects::nonNull)
+                .toList();
+
+        Long totalCount = inventoryFlow.getCount(normalised_barcode, normalised_productName, normalised_clientName);
         return PaginatedResponse.of(dataList, totalCount, pageNumber);
     }
 }

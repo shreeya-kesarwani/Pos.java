@@ -1,5 +1,6 @@
 package com.pos.security;
 
+import com.pos.utils.CsvRoleAccessService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,20 +17,26 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class RoleAuthorizationFilter extends OncePerRequestFilter {
 
+    private final CsvRoleAccessService csvService;
+
+    public RoleAuthorizationFilter(CsvRoleAccessService csvService) {
+        this.csvService = csvService;
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        // IMPORTANT: servletPath excludes context-path (/api)
-        // If context-path=/api, servletPath for /api/auth/session is /auth/session
-        String path = request.getServletPath();
+        String path = request.getServletPath(); // excludes context-path (/api)
         String method = request.getMethod();
 
         // Allow preflight
         if ("OPTIONS".equalsIgnoreCase(method)) return true;
 
         // Allow auth endpoints + swagger/docs always
+        // Also allow Spring's error endpoint so you don't block error rendering
         return path.startsWith("/auth/")
                 || path.startsWith("/swagger-ui")
-                || path.startsWith("/v3/api-docs");
+                || path.startsWith("/v3/api-docs")
+                || path.equals("/error");
     }
 
     @Override
@@ -39,21 +46,24 @@ public class RoleAuthorizationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
 
-        // If JWT didn’t authenticate, let SecurityConfig handle 401/permitAll
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth == null || auth.getPrincipal() == null) {
+
+        // If JWT didn’t authenticate, let SecurityConfig handle 401/permitAll
+        if (auth == null || auth.getPrincipal() == null || !(auth.getPrincipal() instanceof AuthPrincipal)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        // ✅ DO NOT clear authentication here.
-        // Your role/CSV based authorization should only return 403 if not allowed.
+        String method = request.getMethod().toUpperCase();
+        String path = request.getServletPath(); // already without /api if context-path=/api
 
-        // TODO: Put your existing "CSV permission check" here.
-        // Example placeholder: allow everything for now
-        boolean allowed = true;
+        // getRole() is likely an enum (UserRole) -> convert to String
+        String role = ((AuthPrincipal) auth.getPrincipal()).getRole().toString();
+
+        boolean allowed = csvService.isAllowed(method, path, role);
 
         if (!allowed) {
+            // Return 403 JSON (frontend expects JSON message)
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setCharacterEncoding(StandardCharsets.UTF_8.name());
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);

@@ -21,8 +21,6 @@ public class AuthDto extends AbstractDto {
 
     public AuthData signup(SignupForm form) throws ApiException {
         normalize(form);
-        validateForm(form);
-
         String email = normalizeEmailLowercase(form.getEmail());
         String password = form.getPassword(); // keep as-is (do NOT lowercase)
 
@@ -37,7 +35,6 @@ public class AuthDto extends AbstractDto {
 
     public AuthData login(LoginForm form) throws ApiException {
         normalize(form);
-        validateForm(form);
 
         String email = normalizeEmailLowercase(form.getEmail());
         String password = form.getPassword();

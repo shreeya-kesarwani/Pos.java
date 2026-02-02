@@ -1,10 +1,32 @@
-/clients,POST,SUPERVISOR
-/clients/*,PUT,SUPERVISOR
+# UPLOAD / WRITE (SUPERVISOR ONLY)
+POST,/users/upload,SUPERVISOR
+POST,/inventory/upload,SUPERVISOR
+POST,/products/upload,SUPERVISOR
+POST,/products,SUPERVISOR
+PUT,/products/*,SUPERVISOR
+POST,/clients,SUPERVISOR
+PUT,/clients/*,SUPERVISOR
 
-/products,POST,SUPERVISOR
-/products/*,PUT,SUPERVISOR
-/products/upload,POST,SUPERVISOR
+# READ (BOTH OPERATOR + SUPERVISOR)
+GET,/clients,OPERATOR
+GET,/clients,SUPERVISOR
+GET,/products,OPERATOR
+GET,/products,SUPERVISOR
+GET,/inventory,OPERATOR
+GET,/inventory,SUPERVISOR
 
-/inventory/upload,POST,SUPERVISOR
+# ORDERS (BOTH)
+POST,/orders,OPERATOR
+POST,/orders,SUPERVISOR
+GET,/orders,OPERATOR
+GET,/orders,SUPERVISOR
+GET,/orders/*/items,OPERATOR
+GET,/orders/*/items,SUPERVISOR
+POST,/orders/*/invoice,OPERATOR
+POST,/orders/*/invoice,SUPERVISOR
 
-/reports/*,GET,SUPERVISOR
+# REPORTS (BOTH)
+GET,/reports/sales,OPERATOR
+GET,/reports/sales,SUPERVISOR
+GET,/reports/day-sales,OPERATOR
+GET,/reports/day-sales,SUPERVISOR

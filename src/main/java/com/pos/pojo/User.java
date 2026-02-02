@@ -29,5 +29,4 @@ public class User extends AbstractPojo {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserRole role;
-    //todo- add enums in a folder called constants in model
 }

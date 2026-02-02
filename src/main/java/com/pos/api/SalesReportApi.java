@@ -2,6 +2,7 @@ package com.pos.api;
 
 import com.pos.dao.SalesReportDao;
 import com.pos.exception.ApiException;
+import com.pos.pojo.SalesReport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,13 +18,13 @@ public class SalesReportApi {
     private SalesReportDao salesReportDao;
 
     @Transactional(readOnly = true)
-    public List<Object[]> getSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) {
+    public List<SalesReport> getSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) {
         return salesReportDao.getSalesReportRows(startDate, endDate, clientId);
     }
 
     @Transactional(readOnly = true)
-    public List<Object[]> getCheckSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) throws ApiException {
-        List<Object[]> rows = getSalesReport(startDate, endDate, clientId);
+    public List<SalesReport> getCheckSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) throws ApiException {
+        List<SalesReport> rows = getSalesReport(startDate, endDate, clientId);
 
         if (rows == null || rows.isEmpty()) {
             throw new ApiException(String.format(

@@ -10,54 +10,34 @@ import java.util.List;
 @Repository
 public class OrderDao extends BaseDao {
 
-    public void insert(Order order) {
-        em().persist(order);
-    }
+    private static final String SEARCH_JPQL =
+            "SELECT o FROM Order o WHERE " +
+                    "(:id IS NULL OR o.id = :id) " +
+                    "AND (:status IS NULL OR o.status = :status) " +
+                    "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end) " +
+                    "ORDER BY o.createdAt DESC";
 
-    public Order select(Integer id) {
-        return em().find(Order.class, id);
-    }
+    private static final String COUNT_JPQL =
+            "SELECT COUNT(o) FROM Order o WHERE " +
+                    "(:id IS NULL OR o.id = :id) " +
+                    "AND (:status IS NULL OR o.status = :status) " +
+                    "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end)";
 
-    public void update(Order order) {
-        em().merge(order);
-    }
+    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
 
-    public List<Order> search(Integer id,
-                              ZonedDateTime start,
-                              ZonedDateTime end,
-                              OrderStatus status,
-                              int page,
-                              int size) {
-
-        String jpql =
-                "SELECT o FROM Order o WHERE " +
-                        "(:id IS NULL OR o.id = :id) " +
-                        "AND (:status IS NULL OR o.status = :status) " +
-                        "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end) " +
-                        "ORDER BY o.createdAt DESC";
-
-        return em().createQuery(jpql, Order.class)
+        return em().createQuery(SEARCH_JPQL, Order.class)
                 .setParameter("id", id)
                 .setParameter("status", status)
                 .setParameter("start", start)
                 .setParameter("end", end)
-                .setFirstResult(page * size)   // ✅ pagination
-                .setMaxResults(size)           // ✅ pagination
+                .setFirstResult(page * size)
+                .setMaxResults(size)
                 .getResultList();
     }
 
-    public Long getCount(Integer id,
-                         ZonedDateTime start,
-                         ZonedDateTime end,
-                         OrderStatus status) {
+    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
 
-        String jpql =
-                "SELECT COUNT(o) FROM Order o WHERE " +
-                        "(:id IS NULL OR o.id = :id) " +
-                        "AND (:status IS NULL OR o.status = :status) " +
-                        "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end)";
-
-        return em().createQuery(jpql, Long.class)
+        return em().createQuery(COUNT_JPQL, Long.class)
                 .setParameter("id", id)
                 .setParameter("status", status)
                 .setParameter("start", start)

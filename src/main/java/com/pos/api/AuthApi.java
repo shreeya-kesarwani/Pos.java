@@ -31,7 +31,7 @@ public class AuthApi {
         User user = new User();
         user.setEmail(normalizedEmail);
         user.setPasswordHash(encoder.encode(password));
-        user.setRole(UserRole.SUPERVISOR); // ✅ same behavior as before
+        user.setRole(UserRole.SUPERVISOR);
 
         userDao.save(user);
         return user;
@@ -41,8 +41,7 @@ public class AuthApi {
     public AuthData login(String email, String password) throws ApiException {
         String normalizedEmail = normalizeEmail(email);
 
-        User user = userDao.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new ApiException("Invalid credentials"));
+        User user = userDao.findByEmail(normalizedEmail).orElseThrow(() -> new ApiException("Invalid credentials"));
 
         if (!encoder.matches(password, user.getPasswordHash())) {
             throw new ApiException("Invalid credentials");
@@ -66,7 +65,6 @@ public class AuthApi {
         }
 
         validatePassword(newPassword);
-
         user.setPasswordHash(encoder.encode(newPassword));
         userDao.save(user);
     }

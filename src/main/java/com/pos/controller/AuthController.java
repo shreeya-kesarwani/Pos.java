@@ -6,6 +6,7 @@ import com.pos.model.data.AuthData;
 import com.pos.model.form.ChangePasswordForm;
 import com.pos.model.form.LoginForm;
 import com.pos.model.form.SignupForm;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,17 +21,17 @@ public class AuthController {
     private AuthDto authDto;
 
     @RequestMapping(value = "/signup", method = RequestMethod.POST)
-    public AuthData signup(@RequestBody SignupForm form) throws ApiException {
+    public AuthData signup(@Valid @RequestBody SignupForm form) throws ApiException {
         return authDto.signup(form);
     }
 
     @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public AuthData login(@RequestBody LoginForm form) throws ApiException {
+    public AuthData login(@Valid @RequestBody LoginForm form) throws ApiException {
         return authDto.login(form);
     }
 
     @RequestMapping(value = "/change-password", method = RequestMethod.POST)
-    public void changePassword(@RequestBody ChangePasswordForm form)
+    public void changePassword(@Valid @RequestBody ChangePasswordForm form)
             throws ApiException {
         authDto.changePassword(form);
     }

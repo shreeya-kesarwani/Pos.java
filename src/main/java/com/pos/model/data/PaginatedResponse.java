@@ -10,7 +10,7 @@ import java.util.List;
 public class PaginatedResponse<T> {
     private List<T> data;
     private Long totalCount;
-    private Integer pageNo; // Task 1
+    private Integer pageNo;
 
     public static <T> PaginatedResponse<T> of(List<T> data, Long totalCount, Integer pageNo) {
         PaginatedResponse<T> res = new PaginatedResponse<>();
@@ -19,5 +19,4 @@ public class PaginatedResponse<T> {
         res.pageNo = pageNo;
         return res;
     }
-
 }

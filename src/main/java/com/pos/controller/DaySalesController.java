@@ -4,6 +4,7 @@ import com.pos.dto.DaySalesDto;
 import com.pos.exception.ApiException;
 import com.pos.model.data.DaySalesData;
 import com.pos.model.form.DaySalesForm;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 

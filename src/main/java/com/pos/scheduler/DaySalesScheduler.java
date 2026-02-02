@@ -23,7 +23,7 @@ public class DaySalesScheduler {
 
     @Scheduled(fixedDelay = 10000)
     public void computeYesterday() throws ApiException {
-
+//todo - scheduler should not handle this logic, it should only call the method
         // Yesterday in BUSINESS timezone, at start-of-day boundary
         ZonedDateTime yesterdayStartBusiness =
                 ZonedDateTime.now(BUSINESS_ZONE)

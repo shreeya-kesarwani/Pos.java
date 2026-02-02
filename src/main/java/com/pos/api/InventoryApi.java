@@ -6,6 +6,7 @@ import com.pos.pojo.Inventory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -15,28 +16,28 @@ public class InventoryApi {
     @Autowired
     private InventoryDao inventoryDao;
 
+    @Transactional(readOnly = true)
     public Inventory get(Integer id) {
         return inventoryDao.select(id, Inventory.class);
     }
 
+    @Transactional(readOnly = true)
     public Inventory getCheck(Integer id) throws ApiException {
-        Inventory inventory = get(id);
-        if (inventory == null) {
-            throw new ApiException(String.format("Inventory record ID %d not found", id));
-        }
-        return inventory;
+        Inventory inv = get(id);
+        if (inv == null) throw new ApiException("Inventory record not found: " + id);
+        return inv;
     }
 
+    @Transactional(readOnly = true)
     public Inventory getByProductId(Integer productId) {
         return inventoryDao.selectByProductId(productId);
     }
 
+    @Transactional(readOnly = true)
     public Inventory getCheckByProductId(Integer productId) throws ApiException {
-        Inventory inventory = getByProductId(productId);
-        if (inventory == null) {
-            throw new ApiException(String.format("Inventory for Product ID %d not found", productId));
-        }
-        return inventory;
+        Inventory inv = getByProductId(productId);
+        if (inv == null) throw new ApiException("Inventory not found for productId: " + productId);
+        return inv;
     }
 
     public void add(Inventory inventory) {
@@ -59,25 +60,16 @@ public class InventoryApi {
     }
 
     public void allocate(Integer productId, Integer quantity) throws ApiException {
-        if (productId == null) {
-            throw new ApiException("Product id cannot be null");
-        }
         if (quantity == null || quantity <= 0) {
             throw new ApiException("Quantity must be > 0");
         }
-        //todo can use getCheckbyprodid ->no neeed for this if validation again
-        Inventory inventory = getByProductId(productId);
-        if (inventory == null) {
-            throw new ApiException("Inventory not found for productId: " + productId);
-        }
+
+        Inventory inventory = getCheckByProductId(productId);
+
         if (inventory.getQuantity() < quantity) {
             throw new ApiException("Insufficient inventory for productId: " + productId);
         }
 
         inventory.setQuantity(inventory.getQuantity() - quantity);
-//        // your update() copies quantity into managed entity (dirty checking will persist it)
-//        update(inventory.getId(), inventory);
     }
-
-
 }

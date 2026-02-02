@@ -19,21 +19,15 @@ public class UserApi {
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
-    /**
-     * Bulk create users if new, else update role (and optionally password).
-     * All-or-nothing: if any ApiException is thrown, transaction rolls back.
-     */
     public void bulkCreateOrUpdate(List<User> incomingUsers) throws ApiException {
         for (User incoming : incomingUsers) {
-            String email = incoming.getEmail(); // already normalized in DTO
+            String email = incoming.getEmail();
             User existing = userDao.findByEmail(email).orElse(null);
 
             if (existing == null) {
-                // CREATE
                 incoming.setPasswordHash(encoder.encode(incoming.getPasswordHash())); // DTO stores raw password here
                 userDao.save(incoming);
             } else {
-                // UPDATE ROLE (keep existing password)
                 existing.setRole(incoming.getRole());
                 userDao.save(existing);
             }

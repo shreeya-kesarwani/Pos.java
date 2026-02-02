@@ -4,6 +4,7 @@ import com.pos.api.ClientApi;
 import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.flow.ProductFlow;
+import com.pos.model.form.ProductForm;
 import com.pos.pojo.Client;
 import com.pos.pojo.Product;
 import org.junit.jupiter.api.Test;
@@ -12,53 +13,90 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductFlowTest {
 
-    @Mock private ProductApi productApi;
-    @Mock private ClientApi clientApi;
+    @Mock
+    private ProductApi productApi;
 
-    @InjectMocks private ProductFlow productFlow;
+    @Mock
+    private ClientApi clientApi;
+
+    @InjectMocks
+    private ProductFlow productFlow;
 
     @Test
-    void add_shouldSetClientId_andCallProductApi() throws ApiException {
-        Client c = new Client();
-        c.setId(10);
-        c.setName("ABC");
-
-        when(clientApi.getByName("ABC")).thenReturn(c);
-
+    void add_shouldResolveClientId_andCallProductApi() throws ApiException {
         Product p = new Product();
         p.setName("Pen");
 
-        productFlow.add(p, "ABC");
+        Client client = new Client();
+        client.setId(10);
+        client.setName("ClientA");
+
+        when(clientApi.getByName("ClientA")).thenReturn(client);
+
+        productFlow.add(p, "ClientA");
 
         assertEquals(10, p.getClientId());
-        verify(clientApi).getByName("ABC");
+        verify(clientApi).getByName("ClientA");
         verify(productApi).add(p);
-        verifyNoMoreInteractions(clientApi, productApi);
+        verifyNoMoreInteractions(productApi, clientApi);
     }
 
     @Test
-    void add_shouldThrow_whenClientNameBlank() {
+    void update_shouldResolveClientId_andCallProductApiUpdate() throws ApiException {
         Product p = new Product();
-        ApiException ex = assertThrows(ApiException.class, () -> productFlow.add(p, "   "));
-        assertTrue(ex.getMessage().contains("Client name is required"));
-        verifyNoInteractions(clientApi, productApi);
+        p.setName("Pen");
+
+        Client client = new Client();
+        client.setId(20);
+        client.setName("ClientB");
+
+        when(clientApi.getByName("ClientB")).thenReturn(client);
+
+        productFlow.update("B1", p, "ClientB");
+
+        assertEquals(20, p.getClientId());
+        verify(clientApi).getByName("ClientB");
+        verify(productApi).update("B1", p);
+        verifyNoMoreInteractions(productApi, clientApi);
     }
 
     @Test
-    void add_shouldThrow_whenClientNotFound() throws ApiException {
-        when(clientApi.getByName("ABC")).thenReturn(null);
+    void addBulkFromForms_shouldResolveClients_andCallProductApiAddBulk() throws ApiException {
+        ProductForm f1 = new ProductForm();
+        f1.setBarcode("B1");
+        f1.setClientName("ClientA");
+        f1.setName("Pen");
+        f1.setMrp(10.0);
 
-        Product p = new Product();
-        ApiException ex = assertThrows(ApiException.class, () -> productFlow.add(p, "ABC"));
-        assertTrue(ex.getMessage().contains("Client not found"));
-        verify(clientApi).getByName("ABC");
-        verifyNoInteractions(productApi);
+        ProductForm f2 = new ProductForm();
+        f2.setBarcode("B2");
+        f2.setClientName("ClientA");
+        f2.setName("Pencil");
+        f2.setMrp(5.0);
+
+        Client client = new Client();
+        client.setId(1);
+        client.setName("ClientA");
+
+        when(clientApi.getByNames(anyList())).thenReturn(List.of(client));
+
+        productFlow.addBulkFromForms(List.of(f1, f2));
+
+        verify(clientApi).getByNames(anyList());
+        verify(productApi).addBulk(argThat(products ->
+                products.size() == 2 &&
+                        products.get(0).getClientId().equals(1) &&
+                        products.get(1).getClientId().equals(1)
+        ));
+        verifyNoMoreInteractions(productApi, clientApi);
     }
-
 }

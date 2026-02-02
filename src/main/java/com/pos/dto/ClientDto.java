@@ -21,28 +21,17 @@ public class ClientDto extends AbstractDto {
 
     public void add(@Valid ClientForm clientForm) throws ApiException {
         normalize(clientForm);
-
         Client pojo = ClientConversion.convertFormToPojo(clientForm);
         clientApi.add(pojo);
     }
 
     public void update(String name, @Valid ClientForm clientForm) throws ApiException {
         normalize(clientForm);
-
         Client ClientPojo = ClientConversion.convertFormToPojo(clientForm);
         clientApi.update(name, ClientPojo);
     }
 
-    public PaginatedResponse<ClientData> getClients(
-            Integer id,
-            String name,
-            String email,
-            Integer page,
-            Integer size
-    ) throws ApiException {
-
-        int pageNumber = (page == null) ? 0 : page;
-        int pageSize = (size == null) ? 10 : size;
+    public PaginatedResponse<ClientData> getClients(Integer id, String name, String email, Integer pageNumber, Integer pageSize) throws ApiException {
 
         String normalizedName = normalize(name);
         String normalizedEmail = normalize(email);

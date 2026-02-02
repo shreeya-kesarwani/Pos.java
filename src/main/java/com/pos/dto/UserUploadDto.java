@@ -2,17 +2,18 @@ package com.pos.dto;
 
 import com.pos.api.UserApi;
 import com.pos.exception.ApiException;
-import com.pos.exception.UploadValidationException;
-import com.pos.pojo.User;
 import com.pos.model.constants.UserRole;
+import com.pos.pojo.User;
 import com.pos.utils.TsvParser;
+import com.pos.utils.TsvUploadUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Component
 public class UserUploadDto extends AbstractDto {
@@ -21,68 +22,43 @@ public class UserUploadDto extends AbstractDto {
     private UserApi userApi;
 
     public void upload(MultipartFile file) throws ApiException, IOException {
+
         List<String[]> rows = TsvParser.read(file.getInputStream());
         TsvParser.validateHeader(rows.get(0), "email", "role", "password");
-
-        List<String> errors = new ArrayList<>();
-        List<User> toCreateOrUpdate = new ArrayList<>();
-
         Set<String> seenEmails = new HashSet<>();
+        List<User> users = TsvUploadUtil.parseOrThrow(
+                rows,
+                "user_upload_errors",
+                (r, lineNumber) -> {
+                    String email = TsvParser.s(r, 0).toLowerCase();
+                    String roleStr = TsvParser.s(r, 1).toUpperCase();
+                    String password = TsvParser.s(r, 2);
 
-        for (int i = 1; i < rows.size(); i++) {
-            String[] r = rows.get(i);
-            String err = null;
+                    if (email.isEmpty()) throw new ApiException("email is required");
+                    if (!isValidEmail(email)) throw new ApiException("invalid email");
 
-            try {
-                String email = TsvParser.s(r, 0).toLowerCase();
-                String roleStr = TsvParser.s(r, 1).toUpperCase();
-                String password = TsvParser.s(r, 2);
+                    if (!seenEmails.add(email)) {
+                        throw new ApiException("duplicate email in file: " + email);
+                    }
 
-                if (email.isEmpty()) throw new ApiException("email is required");
-                if (!isValidEmail(email)) throw new ApiException("invalid email");
+                    UserRole role;
+                    try {
+                        role = UserRole.valueOf(roleStr);
+                    } catch (Exception e) {
+                        throw new ApiException("invalid role");
+                    }
 
-                if (!seenEmails.add(email)) {
-                    throw new ApiException("duplicate email in file: " + email);
+                    if (password.isEmpty()) throw new ApiException("password is required");
+                    User user = new User();
+                    user.setEmail(email);
+                    user.setRole(role);
+                    user.setPasswordHash(password);
+
+                    return user;
                 }
+        );
 
-                UserRole role;
-                try {
-                    role = UserRole.valueOf(roleStr);
-                } catch (Exception e) {
-                    throw new ApiException("invalid role");
-                }
-
-                if (password.isEmpty()) throw new ApiException("password is required");
-
-                User user = new User();
-                user.setEmail(email);
-                user.setRole(role);
-                user.setPasswordHash(password);
-                toCreateOrUpdate.add(user);
-
-            } catch (ApiException ex) {
-                err = "Line " + (i + 1) + ": " + ex.getMessage();
-            } catch (Exception ex) {
-                err = "Line " + (i + 1) + ": Invalid row";
-            }
-
-            errors.add(err);
-        }
-
-        boolean hasAnyError = errors.stream().anyMatch(Objects::nonNull);
-        if (hasAnyError) {
-            byte[] errorTsv = TsvParser.buildErrorTsv(rows, errors);
-            String fname = "user_upload_errors_" +
-                    LocalDateTime.now().toString().replace(":", "-") + ".tsv";
-
-            throw new UploadValidationException(
-                    "TSV has errors",
-                    errorTsv,
-                    fname,
-                    "text/tab-separated-values"
-            );
-        }
-        userApi.bulkCreateOrUpdate(toCreateOrUpdate);
+        userApi.bulkCreateOrUpdate(users);
     }
 
     private boolean isValidEmail(String email) {

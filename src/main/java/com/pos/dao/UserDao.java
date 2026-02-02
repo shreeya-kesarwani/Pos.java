@@ -1,9 +1,7 @@
 package com.pos.dao;
 
 import com.pos.pojo.User;
-import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
-import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
@@ -11,33 +9,23 @@ import java.util.Optional;
 @Repository
 public class UserDao extends BaseDao {
 
+    private static final String FIND_BY_EMAIL_JPQL = "SELECT u FROM User u WHERE u.email = :email";
+
     public Optional<User> findByEmail(String emailLowercase) {
-        if (emailLowercase == null) return Optional.empty();
-
-        TypedQuery<User> q = em().createQuery(
-                "select u from User u where u.email = :email",
-                User.class
-        );
+        TypedQuery<User> q = em().createQuery(FIND_BY_EMAIL_JPQL, User.class);
         q.setParameter("email", emailLowercase);
-
         return q.getResultStream().findFirst();
     }
 
     public Optional<User> findById(Integer id) {
-        if (id == null) return Optional.empty();
-        return Optional.ofNullable(super.select(id, User.class));
+        return Optional.ofNullable(select(id, User.class));
     }
 
     public User save(User user) {
-        if (user == null) return null;
-
-        // If id is null => new entity, persist
         if (user.getId() == null) {
-            super.insert(user);
+            insert(user);
             return user;
         }
-
-        // If id exists => update entity
         return em().merge(user);
     }
 }

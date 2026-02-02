@@ -26,29 +26,22 @@ public class DaySalesApi {
         if (startDate == null || endDate == null) {
             throw new ApiException("startDate and endDate are required");
         }
+        if (startDate.isAfter(endDate)) {
+            throw new ApiException("startDate cannot be after endDate");
+        }
 
         ZonedDateTime startUtc = toUtcStartOfDay(startDate);
         ZonedDateTime endUtcExclusive = toUtcStartOfNextDay(endDate);
-
-        return daySalesDao.selectBetweenDates(startUtc, endUtcExclusive);
+        List<DaySales> rows = daySalesDao.selectBetweenDates(startUtc, endUtcExclusive);
+        return rows == null ? List.of() : rows;
     }
+
 
     @Transactional(readOnly = true)
     public List<DaySales> getCheckDaySales(ZonedDateTime startDate, ZonedDateTime endDate) throws ApiException {
-        List<DaySales> rows = getDaySales(startDate, endDate);
-        if (rows == null || rows.isEmpty()) {
-            throw new ApiException(String.format(
-                    "No day sales data found between %s and %s",
-                    startDate, endDate
-            ));
-        }
-        return rows;
+        return getDaySales(startDate, endDate);
     }
 
-    /**
-     * Scheduler calls this.
-     * The input can be in ANY timezone; we normalize to UTC day boundaries inside.
-     */
     public void calculateAndStore(ZonedDateTime dayInAnyZone) throws ApiException {
         if (dayInAnyZone == null) throw new ApiException("date is required");
 
@@ -58,28 +51,23 @@ public class DaySalesApi {
 
         int ordersCount = toInt(row, 0);
         int itemsCount = toInt(row, 1);
-        double revenue = toDouble(row, 2);   // ✅ convert instead of BigDecimal
+        double revenue = toDouble(row, 2);
 
         DaySales pojo = new DaySales();
         pojo.setDate(dayStartUtc);
         pojo.setInvoicedOrdersCount(ordersCount);
         pojo.setInvoicedItemsCount(itemsCount);
-        pojo.setTotalRevenue(revenue);       // ✅ now matches double
+        pojo.setTotalRevenue(revenue);
 
         daySalesDao.insertOrUpdate(pojo);
     }
 
     private static double toDouble(Object[] row, int idx) {
         if (row == null || row.length <= idx || row[idx] == null) return 0.0;
-
         Object v = row[idx];
-
-        if (v instanceof Number n) return n.doubleValue();   // handles BigDecimal too
+        if (v instanceof Number n) return n.doubleValue();
         return 0.0;
     }
-
-
-    // ---------------- helpers ----------------
 
     private static ZonedDateTime toUtcStartOfDay(ZonedDateTime zdt) {
         return zdt.withZoneSameInstant(ZoneOffset.UTC)

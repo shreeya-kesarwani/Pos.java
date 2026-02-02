@@ -2,37 +2,38 @@ package com.pos.dao;
 
 import com.pos.pojo.Product;
 import org.springframework.stereotype.Repository;
-
 import java.util.List;
 
 @Repository
 public class ProductDao extends BaseDao {
 
+    private static final String BASE_QUERY =
+            " FROM Product p, Client c " +
+                    " WHERE p.clientId = c.id " +
+                    " AND (:name IS NULL OR p.name LIKE :name) " +
+                    " AND (:barcode IS NULL OR p.barcode = :barcode) " +
+                    " AND (:cName IS NULL OR c.name = :cName)";
+
     public List<Product> search(String name, String barcode, String clientName, int page, int size) {
-        String jpql = "SELECT p FROM Product p JOIN Client c ON p.clientId = c.id " +
-                "WHERE (:name IS NULL OR p.name LIKE :name) " +
-                "AND (:barcode IS NULL OR p.barcode = :barcode) " +
-                "AND (:cName IS NULL OR c.name = :cName)";
+
+        String jpql = "SELECT p" + BASE_QUERY + " ORDER BY p.id";
 
         return em().createQuery(jpql, Product.class)
-                .setParameter("name", (name == null || name.isEmpty()) ? null : "%" + name + "%")
-                .setParameter("barcode", (barcode == null || barcode.isEmpty()) ? null : barcode)
-                .setParameter("cName", (clientName == null || clientName.isEmpty()) ? null : clientName)
+                .setParameter("name", name)
+                .setParameter("barcode", barcode)
+                .setParameter("cName", clientName)
                 .setFirstResult(page * size)
                 .setMaxResults(size)
                 .getResultList();
     }
 
     public Long getCount(String name, String barcode, String clientName) {
-        String jpql = "SELECT COUNT(p) FROM Product p JOIN Client c ON p.clientId = c.id " +
-                "WHERE (:name IS NULL OR p.name LIKE :name) " +
-                "AND (:barcode IS NULL OR p.barcode = :barcode) " +
-                "AND (:cName IS NULL OR c.name = :cName)";
+        String jpql = "SELECT COUNT(p)" + BASE_QUERY;
 
         return em().createQuery(jpql, Long.class)
-                .setParameter("name", (name == null || name.isEmpty()) ? null : "%" + name + "%")
-                .setParameter("barcode", (barcode == null || barcode.isEmpty()) ? null : barcode)
-                .setParameter("cName", (clientName == null || clientName.isEmpty()) ? null : clientName)
+                .setParameter("name", name)
+                .setParameter("barcode", barcode)
+                .setParameter("cName", clientName)
                 .getSingleResult();
     }
 
@@ -45,7 +46,6 @@ public class ProductDao extends BaseDao {
                 .getResultList();
     }
 
-
     public List<Product> selectByIds(List<Integer> ids) {
         if (ids == null || ids.isEmpty()) return List.of();
 
@@ -54,5 +54,4 @@ public class ProductDao extends BaseDao {
                 .setParameter("ids", ids)
                 .getResultList();
     }
-
 }

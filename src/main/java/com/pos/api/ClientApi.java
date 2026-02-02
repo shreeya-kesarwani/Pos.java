@@ -6,6 +6,7 @@ import com.pos.pojo.Client;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.util.List;
 
 @Service
@@ -15,10 +16,12 @@ public class ClientApi {
     @Autowired
     private ClientDao clientDao;
 
+    @Transactional(readOnly = true)
     public Client get(Integer id) {
         return clientDao.select(id, Client.class);
     }
 
+    @Transactional(readOnly = true)
     public Client getCheck(Integer id) throws ApiException {
         Client client = get(id);
         if (client == null) {
@@ -27,11 +30,13 @@ public class ClientApi {
         return client;
     }
 
+    @Transactional(readOnly = true)
     public Client getByName(String name) {
         List<Client> results = clientDao.search(null, name, null, 0, 1);
         return results.isEmpty() ? null : results.get(0);
     }
 
+    @Transactional(readOnly = true)
     public Client getCheckByName(String name) throws ApiException {
         Client client = getByName(name);
         if (client == null) {
@@ -54,7 +59,6 @@ public class ClientApi {
         if (other != null && !other.getId().equals(existing.getId())) {
             throw new ApiException(String.format("The name [%s] is already taken by another client", p.getName()));
         }
-
         existing.setName(p.getName());
         existing.setEmail(p.getEmail());
     }
@@ -75,4 +79,9 @@ public class ClientApi {
         return clientDao.selectByNames(names);
     }
 
+    @Transactional(readOnly = true)
+    public List<Client> getByIds(List<Integer> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return clientDao.selectByIds(ids);
+    }
 }

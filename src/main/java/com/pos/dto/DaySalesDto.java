@@ -37,19 +37,13 @@ public class DaySalesDto extends AbstractDto {
 
     public List<DaySalesData> get(DaySalesForm form) throws ApiException {
         validate(form);
-
-        List<DaySales> pojos =
-                daySalesApi.getDaySales(form.getStartDate(), form.getEndDate());
-
+        List<DaySales> pojos = daySalesApi.getDaySales(form.getStartDate(), form.getEndDate());
         return DaySalesConversion.toData(pojos);
     }
 
     public List<DaySalesData> getCheck(DaySalesForm form) throws ApiException {
         validate(form);
-
-        List<DaySales> pojos =
-                daySalesApi.getCheckDaySales(form.getStartDate(), form.getEndDate());
-
+        List<DaySales> pojos = daySalesApi.getCheckDaySales(form.getStartDate(), form.getEndDate());
         return DaySalesConversion.toData(pojos);
     }
 }
