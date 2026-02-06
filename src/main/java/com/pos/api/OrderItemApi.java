@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 @Component
 @Transactional(rollbackFor = ApiException.class)
 public class OrderItemApi {
@@ -20,10 +22,6 @@ public class OrderItemApi {
         orderItemDao.insert(item);
     }
 
-    /**
-     * ✅ API-level entity creation helper
-     * This is OK in API layer (Flow should not build entities).
-     */
     public void add(Integer orderId, Integer productId, Integer quantity, Double sellingPrice) {
         OrderItem item = new OrderItem();
         item.setOrderId(orderId);
@@ -38,15 +36,11 @@ public class OrderItemApi {
         return orderItemDao.selectByOrderId(orderId);
     }
 
-    /**
-     * ✅ Optional helper if you want "getCheck" style.
-     * Useful for places where empty order items should be treated as error.
-     */
     @Transactional(readOnly = true)
     public List<OrderItem> getCheckByOrderId(Integer orderId) throws ApiException {
         List<OrderItem> items = orderItemDao.selectByOrderId(orderId);
         if (items == null || items.isEmpty()) {
-            throw new ApiException("No order items found for order: " + orderId);
+            throw new ApiException(NO_ORDER_ITEMS_FOUND.value() + ": orderId=" + orderId);
         }
         return items;
     }

@@ -19,5 +19,5 @@ public class SalesReportForm {
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
     private LocalDate endDate;
 
-    private Integer clientId;
+    private String clientName;
 }

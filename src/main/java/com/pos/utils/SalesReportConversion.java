@@ -1,7 +1,6 @@
 package com.pos.utils;
 
 import com.pos.model.data.SalesReportData;
-import com.pos.pojo.SalesReport;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,12 +9,12 @@ public class SalesReportConversion {
 
     private SalesReportConversion() {}
 
-    public static List<SalesReportData> toData(List<SalesReport> rows) {
+    public static List<com.pos.model.data.SalesReportData> toData(List<SalesReportData> rows) {
         if (rows == null || rows.isEmpty()) return List.of();
 
-        List<SalesReportData> out = new ArrayList<>(rows.size());
-        for (SalesReport r : rows) {
-            SalesReportData d = new SalesReportData();
+        List<com.pos.model.data.SalesReportData> out = new ArrayList<>(rows.size());
+        for (SalesReportData r : rows) {
+            com.pos.model.data.SalesReportData d = new com.pos.model.data.SalesReportData();
             d.setBarcode(r.getBarcode());
             d.setProductName(r.getProductName());
             d.setQuantity(r.getQuantity());

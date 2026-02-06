@@ -6,8 +6,6 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class AuthData {
+public class AuthData extends SessionData {
     private String token;
-    private Integer userId;
-    private UserRole role;
 }

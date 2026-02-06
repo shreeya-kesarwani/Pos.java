@@ -45,9 +45,8 @@ import java.time.ZonedDateTime;
 
 @Entity
 @Table(
-        name = "pos_day_sales",
         uniqueConstraints = {
-                @UniqueConstraint(name = "DaySales_date_uk", columnNames = {"date"})
+                @UniqueConstraint(name = "pos_daySales_date_uk", columnNames = {"date"})
         }
 )
 @Getter
@@ -56,17 +55,17 @@ public class DaySales {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
-    @Column(name = "date", nullable = false)
+    @Column(nullable = false)
     private ZonedDateTime date;
 
-    @Column(name = "invoiced_orders_count", nullable = false)
+    @Column(nullable = false)
     private Integer invoicedOrdersCount;
 
-    @Column(name = "invoiced_items_count", nullable = false)
+    @Column(nullable = false)
     private Integer invoicedItemsCount;
 
-    @Column(name = "total_revenue", nullable = false)
-    private double totalRevenue;
+    @Column(nullable = false)
+    private Double totalRevenue;
 }

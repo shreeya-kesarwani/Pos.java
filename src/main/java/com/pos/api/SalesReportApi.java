@@ -2,13 +2,16 @@ package com.pos.api;
 
 import com.pos.dao.SalesReportDao;
 import com.pos.exception.ApiException;
-import com.pos.pojo.SalesReport;
+import com.pos.model.data.SalesReportData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDate;
 import java.util.List;
+
+import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
 @Transactional(rollbackFor = ApiException.class)
@@ -18,19 +21,30 @@ public class SalesReportApi {
     private SalesReportDao salesReportDao;
 
     @Transactional(readOnly = true)
-    public List<SalesReport> getSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) {
+    public List<SalesReportData> getSalesReport(
+            LocalDate startDate,
+            LocalDate endDate,
+            Integer clientId
+    ) {
         return salesReportDao.getSalesReportRows(startDate, endDate, clientId);
     }
 
     @Transactional(readOnly = true)
-    public List<SalesReport> getCheckSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) throws ApiException {
-        List<SalesReport> rows = getSalesReport(startDate, endDate, clientId);
+    public List<SalesReportData> getCheckSalesReport(
+            LocalDate startDate,
+            LocalDate endDate,
+            Integer clientId
+    ) throws ApiException {
 
-        if (rows == null || rows.isEmpty()) {
-            throw new ApiException(String.format(
-                    "No sales report data found between %s and %s",
-                    startDate, endDate
-            ));
+        List<SalesReportData> rows = getSalesReport(startDate, endDate, clientId);
+
+        if (CollectionUtils.isEmpty(rows)) {
+            throw new ApiException(
+                    SALES_REPORT_EMPTY.value() +
+                            " | startDate=" + startDate +
+                            ", endDate=" + endDate +
+                            ", clientId=" + clientId
+            );
         }
         return rows;
     }

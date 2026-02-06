@@ -15,7 +15,27 @@ public class ProductTsvParser {
 
     public static ProductTsvParseResult parse(MultipartFile file) throws ApiException, IOException {
         List<String[]> rows = TsvParser.read(file.getInputStream());
-        TsvParser.validateHeader(rows.get(0), "barcode", "clientname", "name", "mrp", "imageurl");
+
+        try {
+            TsvParser.validateHeader(rows.get(0), "barcode", "clientname", "name", "mrp", "imageurl");
+        } catch (ApiException headerEx) {
+            // Create an error TSV with an "error" column; mark all rows with same header error
+            List<String> errors = new ArrayList<>();
+            for (int i = 1; i < rows.size(); i++) {
+                errors.add("Invalid header: " + headerEx.getMessage());
+            }
+
+            byte[] errorTsv = TsvParser.buildErrorTsv(rows, errors);
+            String fname = "product_upload_errors_" +
+                    LocalDateTime.now().toString().replace(":", "-") + ".tsv";
+
+            throw new UploadValidationException(
+                    "TSV has errors",
+                    errorTsv,
+                    fname,
+                    "text/tab-separated-values"
+            );
+        }
 
         List<String> errors = new ArrayList<>();
         List<ProductForm> validForms = new ArrayList<>();
@@ -43,13 +63,9 @@ public class ProductTsvParser {
                 String img = TsvParser.s(r, 4);
                 form.setImageUrl(img.isEmpty() ? null : img);
 
-                // structural/shape validation only (NOT DB checks)
                 validateShape(form);
-
-                // normalize (trim/lowercase etc) - still not business validation
                 normalizeShape(form);
 
-                // duplicates within file (still not business validation)
                 String bc = form.getBarcode();
                 if (!seenBarcodes.add(bc)) {
                     throw new ApiException("Duplicate barcode in file: " + bc);
@@ -81,6 +97,7 @@ public class ProductTsvParser {
 
         return new ProductTsvParseResult(validForms, uniqueClientNames);
     }
+
 
     private static void validateShape(ProductForm form) throws ApiException {
         if (form.getBarcode() == null || form.getBarcode().isBlank()) throw new ApiException("barcode is required");

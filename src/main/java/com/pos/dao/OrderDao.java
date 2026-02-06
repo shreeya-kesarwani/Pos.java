@@ -2,6 +2,7 @@ package com.pos.dao;
 
 import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.Order;
+import com.pos.pojo.User;
 import org.springframework.stereotype.Repository;
 
 import java.time.ZonedDateTime;
@@ -10,22 +11,18 @@ import java.util.List;
 @Repository
 public class OrderDao extends BaseDao {
 
-    private static final String SEARCH_JPQL =
-            "SELECT o FROM Order o WHERE " +
+    private static final String ORDER_FILTERS =
+            " FROM Order o WHERE " +
                     "(:id IS NULL OR o.id = :id) " +
                     "AND (:status IS NULL OR o.status = :status) " +
-                    "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end) " +
-                    "ORDER BY o.createdAt DESC";
+                    "AND ((:start IS NULL AND :end IS NULL) OR o.createdAt BETWEEN :start AND :end) ";
 
-    private static final String COUNT_JPQL =
-            "SELECT COUNT(o) FROM Order o WHERE " +
-                    "(:id IS NULL OR o.id = :id) " +
-                    "AND (:status IS NULL OR o.status = :status) " +
-                    "AND (:start IS NULL OR :end IS NULL OR o.createdAt BETWEEN :start AND :end)";
+    private static final String ORDER_SEARCH = "SELECT o" + ORDER_FILTERS + "ORDER BY o.createdAt DESC";
+    private static final String ORDER_COUNT = "SELECT COUNT(o)" + ORDER_FILTERS;
 
     public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
 
-        return em().createQuery(SEARCH_JPQL, Order.class)
+        return createQuery(ORDER_SEARCH, Order.class)
                 .setParameter("id", id)
                 .setParameter("status", status)
                 .setParameter("start", start)
@@ -37,11 +34,15 @@ public class OrderDao extends BaseDao {
 
     public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
 
-        return em().createQuery(COUNT_JPQL, Long.class)
+        return createQuery(ORDER_COUNT, Long.class)
                 .setParameter("id", id)
                 .setParameter("status", status)
                 .setParameter("start", start)
                 .setParameter("end", end)
                 .getSingleResult();
+    }
+
+    public Order selectById(Integer id) {
+        return select(id, Order.class);
     }
 }

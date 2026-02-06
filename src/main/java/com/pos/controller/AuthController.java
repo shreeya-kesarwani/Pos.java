@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+//todo - add cookies, expire JWT Token after 1 hr - explore both the options
 @RestController
 @RequestMapping("/auth")
 public class AuthController {

@@ -13,6 +13,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import static com.pos.model.constants.ErrorMessages.EMAIL_CANNOT_BE_EMPTY;
+import static com.pos.model.constants.ErrorMessages.PASSWORD_CANNOT_BE_EMPTY;
+import static com.pos.utils.AuthConversion.convertUserToSignupData;
+
 @Component
 public class AuthDto extends AbstractDto {
 
@@ -21,16 +25,14 @@ public class AuthDto extends AbstractDto {
 
     public AuthData signup(SignupForm form) throws ApiException {
         normalize(form);
+
         String email = normalizeEmailLowercase(form.getEmail());
-        String password = form.getPassword(); // keep as-is (do NOT lowercase)
+        String password = form.getPassword();
+        validatePassword(password);
 
         User user = authApi.signup(email, password);
 
-        AuthData data = new AuthData();
-        data.setUserId(user.getId());
-        data.setRole(user.getRole());
-        data.setToken(null);
-        return data;
+        return convertUserToSignupData(user);
     }
 
     public AuthData login(LoginForm form) throws ApiException {
@@ -38,6 +40,7 @@ public class AuthDto extends AbstractDto {
 
         String email = normalizeEmailLowercase(form.getEmail());
         String password = form.getPassword();
+        validatePassword(password);
 
         return authApi.login(email, password);
     }
@@ -61,8 +64,14 @@ public class AuthDto extends AbstractDto {
 
     private String normalizeEmailLowercase(String email) throws ApiException {
         if (!StringUtils.hasText(email)) {
-            throw new ApiException("Email cannot be empty");
+            throw new ApiException(EMAIL_CANNOT_BE_EMPTY.value() + ": " + email);
         }
         return email.trim().toLowerCase();
+    }
+
+    private void validatePassword(String password) throws ApiException {
+        if (password == null || password.trim().isEmpty()) {
+            throw new ApiException(PASSWORD_CANNOT_BE_EMPTY.value());
+        }
     }
 }

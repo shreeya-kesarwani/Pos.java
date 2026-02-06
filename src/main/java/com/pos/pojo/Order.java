@@ -10,7 +10,7 @@ import lombok.Setter;
 @Setter
 @Table(
         indexes = {
-                @Index(name = "order_status_idx", columnList = "status")
+                @Index(name = "pos_order_status_idx", columnList = "status")
         }
 )
 public class Order extends AbstractPojo {
@@ -23,5 +23,5 @@ public class Order extends AbstractPojo {
     @Column(nullable = false)
     private OrderStatus status;
 
-    private String InvoicePath;
+    private String invoicePath;
 }

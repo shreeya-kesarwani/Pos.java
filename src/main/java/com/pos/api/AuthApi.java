@@ -2,38 +2,39 @@ package com.pos.api;
 
 import com.pos.dao.UserDao;
 import com.pos.exception.ApiException;
+import com.pos.model.constants.UserRole;
 import com.pos.model.data.AuthData;
 import com.pos.pojo.User;
-import com.pos.model.constants.UserRole;
-import com.pos.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import static com.pos.model.constants.ErrorMessages.*;
+import static com.pos.security.JwtUtil.createToken;
+import static com.pos.utils.AuthConversion.convertSignupToUser;
+import static com.pos.utils.AuthConversion.convertUserToLoginData;
+
 @Component
 @Transactional(rollbackFor = ApiException.class)
 public class AuthApi {
 
-    @Autowired private UserDao userDao;
-    @Autowired private JwtUtil jwtUtil;
+    @Autowired
+    private UserDao userDao;
 
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     public User signup(String email, String password) throws ApiException {
-        String normalizedEmail = normalizeEmail(email);
-        validatePassword(password);
 
-        if (userDao.findByEmail(normalizedEmail).isPresent()) {
-            throw new ApiException("Email already registered");
+        if (userDao.findByEmail(email).isPresent()) {
+            throw new ApiException(EMAIL_ALREADY_REGISTERED.value() + ": " + email);
         }
 
-        User user = new User();
-        user.setEmail(normalizedEmail);
-        user.setPasswordHash(encoder.encode(password));
-        user.setRole(UserRole.SUPERVISOR);
+        String passwordHash = encoder.encode(password);
 
-        userDao.save(user);
+        User user = convertSignupToUser(email, passwordHash, UserRole.OPERATOR);
+
+        userDao.insert(user);
         return user;
     }
 
@@ -41,44 +42,43 @@ public class AuthApi {
     public AuthData login(String email, String password) throws ApiException {
         String normalizedEmail = normalizeEmail(email);
 
-        User user = userDao.findByEmail(normalizedEmail).orElseThrow(() -> new ApiException("Invalid credentials"));
+        User user = userDao.findByEmail(normalizedEmail)
+                .orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + normalizedEmail));
 
         if (!encoder.matches(password, user.getPasswordHash())) {
-            throw new ApiException("Invalid credentials");
+            throw new ApiException(INVALID_CREDENTIALS.value());
         }
 
-        String token = jwtUtil.createToken(user.getId(), user.getRole());
-
-        AuthData data = new AuthData();
-        data.setToken(token);
-        data.setUserId(user.getId());
-        data.setRole(user.getRole());
-        return data;
+        String token = createToken(user.getId(), user.getRole());
+        return convertUserToLoginData(user, token);
     }
 
-    public void changePassword(Integer userId, String currentPassword, String newPassword) throws ApiException {
-        User user = userDao.findById(userId)
-                .orElseThrow(() -> new ApiException("User not found"));
+    public void changePassword(Integer userId, String currentPassword, String newPassword)
+            throws ApiException {
+
+        User user = userDao.selectById(userId);
+        if (user == null) {
+            throw new ApiException(USER_NOT_FOUND.value() + ": " + userId);
+        }
 
         if (!encoder.matches(currentPassword, user.getPasswordHash())) {
-            throw new ApiException("Current password is incorrect");
+            throw new ApiException(CURRENT_PASSWORD_INCORRECT.value());
         }
 
         validatePassword(newPassword);
         user.setPasswordHash(encoder.encode(newPassword));
-        userDao.save(user);
     }
 
     private String normalizeEmail(String email) throws ApiException {
         if (email == null || email.trim().isEmpty()) {
-            throw new ApiException("Email cannot be empty");
+            throw new ApiException(EMAIL_CANNOT_BE_EMPTY.value());
         }
         return email.trim().toLowerCase();
     }
 
     private void validatePassword(String password) throws ApiException {
         if (password == null || password.trim().isEmpty()) {
-            throw new ApiException("Password cannot be empty");
+            throw new ApiException(PASSWORD_CANNOT_BE_EMPTY.value());
         }
     }
 }

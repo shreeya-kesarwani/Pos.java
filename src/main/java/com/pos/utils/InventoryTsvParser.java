@@ -23,6 +23,8 @@ public class InventoryTsvParser {
         List<InventoryForm> forms = new ArrayList<>();
         List<String> barcodes = new ArrayList<>();
 
+        Set<String> seenBarcodes = new HashSet<>();
+
         for (int i = 1; i < rows.size(); i++) {
             String[] r = rows.get(i);
             String err = null;
@@ -43,13 +45,19 @@ public class InventoryTsvParser {
                 validateShape(form);
                 normalizeShape(form);
 
+                // ✅ Duplicate barcode check (after normalize so " abc " and "abc" match)
+                String bc = form.getBarcode();
+                if (!seenBarcodes.add(bc)) {
+                    throw new ApiException("Duplicate barcode found in TSV: " + bc);
+                }
+
                 forms.add(form);
-                barcodes.add(form.getBarcode());
+                barcodes.add(bc);
 
             } catch (ApiException ex) {
-                err = "Line " + (i + 1) + ": " + ex.getMessage();
+                err = ex.getMessage();
             } catch (Exception ex) {
-                err = "Line " + (i + 1) + ": Invalid row";
+                err = "Invalid row";
             }
 
             errors.add(err);
@@ -71,6 +79,7 @@ public class InventoryTsvParser {
 
         return new InventoryTsvParseResult(forms, barcodes);
     }
+
 
     private static void validateShape(InventoryForm form) throws ApiException {
         if (form.getBarcode() == null || form.getBarcode().isBlank()) {

@@ -15,6 +15,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 @Component
 public class UserUploadDto extends AbstractDto {
 
@@ -25,7 +27,9 @@ public class UserUploadDto extends AbstractDto {
 
         List<String[]> rows = TsvParser.read(file.getInputStream());
         TsvParser.validateHeader(rows.get(0), "email", "role", "password");
+
         Set<String> seenEmails = new HashSet<>();
+
         List<User> users = TsvUploadUtil.parseOrThrow(
                 rows,
                 "user_upload_errors",
@@ -34,21 +38,28 @@ public class UserUploadDto extends AbstractDto {
                     String roleStr = TsvParser.s(r, 1).toUpperCase();
                     String password = TsvParser.s(r, 2);
 
-                    if (email.isEmpty()) throw new ApiException("email is required");
-                    if (!isValidEmail(email)) throw new ApiException("invalid email");
+                    if (email.isEmpty()) {
+                        throw new ApiException(EMAIL_REQUIRED.value() + " | line=" + lineNumber);
+                    }
+                    if (!isValidEmail(email)) {
+                        throw new ApiException(INVALID_EMAIL.value() + ": " + email + " | line=" + lineNumber);
+                    }
 
                     if (!seenEmails.add(email)) {
-                        throw new ApiException("duplicate email in file: " + email);
+                        throw new ApiException(DUPLICATE_EMAIL_IN_FILE.value() + ": " + email + " | line=" + lineNumber);
                     }
 
                     UserRole role;
                     try {
                         role = UserRole.valueOf(roleStr);
                     } catch (Exception e) {
-                        throw new ApiException("invalid role");
+                        throw new ApiException(INVALID_ROLE.value() + ": " + roleStr + " | email=" + email + " | line=" + lineNumber);
                     }
 
-                    if (password.isEmpty()) throw new ApiException("password is required");
+                    if (password.isEmpty()) {
+                        throw new ApiException(PASSWORD_REQUIRED.value() + " | email=" + email + " | line=" + lineNumber);
+                    }
+
                     User user = new User();
                     user.setEmail(email);
                     user.setRole(role);

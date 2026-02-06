@@ -12,7 +12,6 @@ public class SessionController {
     @GetMapping("/session")
     public SessionData session(@AuthenticationPrincipal AuthPrincipal principal) {
 
-        // Not logged in OR token invalid
         if (principal == null) {
             return new SessionData();
         }

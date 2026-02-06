@@ -21,17 +21,23 @@ public class ProductController {
     @Autowired
     private ProductDto productDto;
 
+    @Operation(summary = "Add a single product")
     @RequestMapping(method = RequestMethod.POST)
     public void add(@Valid @RequestBody ProductForm form) throws ApiException {
         productDto.add(form);
     }
 
-    @Operation(summary = "Uploads products via TSV file")
-    @RequestMapping(value = "/upload", method = RequestMethod.POST, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload products via TSV file")
+    @RequestMapping(
+            value = "/upload",
+            method = RequestMethod.POST,
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
-        productDto.addBulkFromTsv(file);
+        productDto.addBulk(file);
     }
 
+    @Operation(summary = "Search products (paginated)")
     @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ProductData> search(
             @RequestParam(required = false) String name,
@@ -43,12 +49,16 @@ public class ProductController {
         return productDto.getProducts(name, barcode, clientName, page, size);
     }
 
+    @Operation(summary = "Update product by barcode")
     @RequestMapping(value = "/{barcode}", method = RequestMethod.PUT)
-    public void update(@PathVariable String barcode,
-                       @Valid @RequestBody ProductForm productForm) throws ApiException {
+    public void update(
+            @PathVariable String barcode,
+            @Valid @RequestBody ProductForm productForm
+    ) throws ApiException {
         productDto.update(barcode, productForm);
     }
 
+    @Operation(summary = "Count products")
     @RequestMapping(value = "/count", method = RequestMethod.GET)
     public Long getCount() {
         return productDto.getCount();

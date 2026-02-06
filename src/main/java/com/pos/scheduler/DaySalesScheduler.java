@@ -1,36 +1,28 @@
 package com.pos.scheduler;
 
 import com.pos.api.DaySalesApi;
-import com.pos.exception.ApiException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-
 @Component
 public class DaySalesScheduler {
 
-    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Kolkata");
+    private static final Logger log = LoggerFactory.getLogger(DaySalesScheduler.class);
 
-    @Autowired
-    private DaySalesApi daySalesApi;
+    @Autowired DaySalesApi daySalesApi;
 
-    // Use cron in production; fixedDelay is fine for testing.
-    // Example cron (11:03 AM IST): 0 3 11 * * *
-    // @Scheduled(cron = "0 3 11 * * *", zone = "Asia/Kolkata")
-
-    @Scheduled(fixedDelay = 10000)
-    public void computeYesterday() throws ApiException {
-//todo - scheduler should not handle this logic, it should only call the method
-        // Yesterday in BUSINESS timezone, at start-of-day boundary
-        ZonedDateTime yesterdayStartBusiness =
-                ZonedDateTime.now(BUSINESS_ZONE)
-                        .minusDays(1)
-                        .toLocalDate()
-                        .atStartOfDay(BUSINESS_ZONE);
-
-        daySalesApi.calculateAndStore(yesterdayStartBusiness);
+//    @Scheduled(cron = "0 * * * * *", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 3 11 * * *", zone = "Asia/Kolkata")
+    public void compute() {
+        try {
+            daySalesApi.calculateDaySales();
+            System.out.println("✅ DaySalesScheduler finished");
+        } catch (Exception e) {
+            log.error("Unexpected error in DaySalesScheduler", e);
+            System.out.println(" DaySalesScheduler failed");
+        }
     }
 }

@@ -9,6 +9,7 @@ import lombok.Setter;
 public class ClientForm {
     @NotBlank
     private String name;
+
     @NotBlank
     @Email(message = "Please provide a valid email address")
     private String email;

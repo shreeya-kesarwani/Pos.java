@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public class DaySalesDao extends BaseDao {
 
-    private static final String SELECT_BETWEEN_DATES_JPQL = """
+    private static final String SELECT_IN_RANGE = """
         SELECT d
         FROM DaySales d
         WHERE d.date >= :start
@@ -17,8 +17,10 @@ public class DaySalesDao extends BaseDao {
         ORDER BY d.date
     """;
 
-    private static final String GET_AGGREGATES_FOR_DATE_JPQL = """
-        SELECT COUNT(o), SUM(oi.quantity), SUM(oi.quantity * oi.sellingPrice)
+    private static final String SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY = """
+        SELECT COUNT(DISTINCT o.id),
+               COALESCE(SUM(oi.quantity), 0),
+               COALESCE(SUM(oi.quantity * oi.sellingPrice), 0)
         FROM Order o
         JOIN OrderItem oi ON oi.orderId = o.id
         WHERE o.status = 'INVOICED'
@@ -26,22 +28,17 @@ public class DaySalesDao extends BaseDao {
           AND o.updatedAt < :end
     """;
 
-    public void insertOrUpdate(DaySales pojo) {
-        em().merge(pojo);
-    }
-
-    public List<DaySales> selectBetweenDates(ZonedDateTime startUtcInclusive, ZonedDateTime endUtcExclusive) {
-        return em().createQuery(SELECT_BETWEEN_DATES_JPQL, DaySales.class)
-                .setParameter("start", startUtcInclusive)
-                .setParameter("end", endUtcExclusive)
+    public List<DaySales> selectInRange(ZonedDateTime startDate, ZonedDateTime endDate) {
+        return createQuery(SELECT_IN_RANGE, DaySales.class)
+                .setParameter("start", startDate)
+                .setParameter("end", endDate)
                 .getResultList();
     }
 
-    public Object[] getAggregatesForDate(ZonedDateTime dayStartUtc) {
-        ZonedDateTime nextDay = dayStartUtc.plusDays(1);
-
-        return em().createQuery(GET_AGGREGATES_FOR_DATE_JPQL, Object[].class)
-                .setParameter("start", dayStartUtc)
+    public Object[] selectInvoicedSalesAggregatesForDay(ZonedDateTime startDate) {
+        ZonedDateTime nextDay = startDate.plusDays(1);
+        return createQuery(SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY, Object[].class)
+                .setParameter("start", startDate)
                 .setParameter("end", nextDay)
                 .getSingleResult();
     }

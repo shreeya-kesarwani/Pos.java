@@ -19,6 +19,6 @@ public class DaySalesController {
 
     @RequestMapping(method = RequestMethod.GET)
     public List<DaySalesData> get(DaySalesForm form) throws ApiException {
-        return daySalesDto.getCheck(form);
+        return daySalesDto.get(form);
     }
 }

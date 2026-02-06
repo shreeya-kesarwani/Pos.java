@@ -2,13 +2,14 @@ package com.pos.dao;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.util.List;
 
 public abstract class BaseDao {
 
     @PersistenceContext
-    protected EntityManager entityManager; //
+    protected EntityManager entityManager;
 
     protected EntityManager em() {
         return entityManager;
@@ -30,5 +31,13 @@ public abstract class BaseDao {
     public <T> List<T> selectAll(Class<T> clazz) {
         String jpql = "SELECT e FROM " + clazz.getSimpleName() + " e";
         return entityManager.createQuery(jpql, clazz).getResultList();
+    }
+
+    protected <T> TypedQuery<T> createQuery(String jpql, Class<T> clazz) {
+        return em().createQuery(jpql, clazz);
+    }
+
+    protected Query createNativeQuery(String sql) {
+        return em().createNativeQuery(sql);
     }
 }

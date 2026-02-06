@@ -3,70 +3,75 @@ package com.pos.api;
 import com.pos.dao.DaySalesDao;
 import com.pos.exception.ApiException;
 import com.pos.pojo.DaySales;
+import com.pos.utils.DaySalesConversion;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
+
+import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
 @Transactional(rollbackFor = ApiException.class)
 public class DaySalesApi {
 
-    private final DaySalesDao daySalesDao;
+    private static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Kolkata");
 
-    public DaySalesApi(DaySalesDao daySalesDao) {
-        this.daySalesDao = daySalesDao;
-    }
+    @Autowired
+    DaySalesDao daySalesDao;
 
     @Transactional(readOnly = true)
     public List<DaySales> getDaySales(ZonedDateTime startDate, ZonedDateTime endDate) throws ApiException {
-        if (startDate == null || endDate == null) {
-            throw new ApiException("startDate and endDate are required");
-        }
+
         if (startDate.isAfter(endDate)) {
-            throw new ApiException("startDate cannot be after endDate");
+            throw new ApiException(
+                    START_DATE_AFTER_END_DATE.value() +
+                            " | startDate=" + startDate +
+                            ", endDate=" + endDate
+            );
         }
 
         ZonedDateTime startUtc = toUtcStartOfDay(startDate);
         ZonedDateTime endUtcExclusive = toUtcStartOfNextDay(endDate);
-        List<DaySales> rows = daySalesDao.selectBetweenDates(startUtc, endUtcExclusive);
+
+        List<DaySales> rows = daySalesDao.selectInRange(startUtc, endUtcExclusive);
         return rows == null ? List.of() : rows;
     }
 
+    public void calculateDaySales() throws ApiException {
+        ZonedDateTime startBusiness =
+                ZonedDateTime.now(BUSINESS_ZONE)
+                        .toLocalDate()
+                        .atStartOfDay(BUSINESS_ZONE);
 
-    @Transactional(readOnly = true)
-    public List<DaySales> getCheckDaySales(ZonedDateTime startDate, ZonedDateTime endDate) throws ApiException {
-        return getDaySales(startDate, endDate);
+        calculateDaySales(startBusiness);
     }
 
-    public void calculateAndStore(ZonedDateTime dayInAnyZone) throws ApiException {
-        if (dayInAnyZone == null) throw new ApiException("date is required");
+    public void calculateDaySales(ZonedDateTime dayInAnyZone) throws ApiException {
 
-        ZonedDateTime dayStartUtc = toUtcStartOfDay(dayInAnyZone);
+        if (dayInAnyZone == null) {
+            throw new ApiException(DATE_REQUIRED.value());
+        }
 
-        Object[] row = daySalesDao.getAggregatesForDate(dayStartUtc);
+        ZonedDateTime dayStartBusiness = dayInAnyZone
+                .withZoneSameInstant(BUSINESS_ZONE)
+                .toLocalDate()
+                .atStartOfDay(BUSINESS_ZONE);
 
-        int ordersCount = toInt(row, 0);
-        int itemsCount = toInt(row, 1);
-        double revenue = toDouble(row, 2);
+        Object[] row = daySalesDao.selectInvoicedSalesAggregatesForDay(dayStartBusiness);
 
-        DaySales pojo = new DaySales();
-        pojo.setDate(dayStartUtc);
-        pojo.setInvoicedOrdersCount(ordersCount);
-        pojo.setInvoicedItemsCount(itemsCount);
-        pojo.setTotalRevenue(revenue);
+        DaySales pojo = DaySalesConversion.toPojo(
+                dayStartBusiness,
+                row[0],
+                row[1],
+                row[2]
+        );
 
-        daySalesDao.insertOrUpdate(pojo);
-    }
-
-    private static double toDouble(Object[] row, int idx) {
-        if (row == null || row.length <= idx || row[idx] == null) return 0.0;
-        Object v = row[idx];
-        if (v instanceof Number n) return n.doubleValue();
-        return 0.0;
+        daySalesDao.insert(pojo);
     }
 
     private static ZonedDateTime toUtcStartOfDay(ZonedDateTime zdt) {
@@ -80,18 +85,5 @@ public class DaySalesApi {
                 .toLocalDate()
                 .plusDays(1)
                 .atStartOfDay(ZoneOffset.UTC);
-    }
-
-    private static int toInt(Object[] row, int idx) {
-        if (row == null || row.length <= idx || row[idx] == null) return 0;
-        return ((Number) row[idx]).intValue();
-    }
-
-    private static BigDecimal toBigDecimal(Object[] row, int idx) {
-        if (row == null || row.length <= idx || row[idx] == null) return BigDecimal.ZERO;
-        Object v = row[idx];
-        if (v instanceof BigDecimal bd) return bd;
-        if (v instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
-        return BigDecimal.ZERO;
     }
 }

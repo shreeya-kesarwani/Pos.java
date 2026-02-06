@@ -6,7 +6,7 @@ import lombok.Setter;
 
 @Entity
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name = "Client_name_uk", columnNames = {"name"})
+        @UniqueConstraint(name = "pos_client_name_uk", columnNames = {"name"})
 })
 @Getter
 @Setter

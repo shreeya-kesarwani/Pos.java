@@ -6,27 +6,31 @@ import com.pos.pojo.Product;
 
 public class ProductConversion {
 
-    public static Product convertFormToPojo(ProductForm form) {
+    private ProductConversion() {}
+
+    public static Product toPojo(ProductForm form) {
         Product p = new Product();
         p.setName(form.getName());
         p.setBarcode(form.getBarcode());
         p.setMrp(form.getMrp());
-        if (form.getImageUrl() == null || form.getImageUrl().isBlank()) {
-            p.setImageUrl(null);
-        } else {
-            p.setImageUrl(form.getImageUrl());
-        }
-
+        p.setImageUrl(normalizeBlankToNull(form.getImageUrl()));
         return p;
     }
 
-    public static ProductData convertPojoToData(Integer id, Product p, String clientName) {
+    public static ProductData toData(Product p, String clientName) {
         ProductData d = new ProductData();
-        d.setId(id);
+        d.setId(p.getId());
         d.setName(p.getName());
         d.setBarcode(p.getBarcode());
         d.setMrp(p.getMrp());
+        d.setImageUrl(p.getImageUrl()); // include this if your ProductData has it
         d.setClientName(clientName);
         return d;
+    }
+
+    public static String normalizeBlankToNull(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
     }
 }

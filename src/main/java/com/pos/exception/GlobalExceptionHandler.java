@@ -1,6 +1,7 @@
 package com.pos.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -19,7 +20,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1) TSV Upload Validation Errors (MOST SPECIFIC)
     @ExceptionHandler(UploadValidationException.class)
     public ResponseEntity<byte[]> handleUploadValidation(UploadValidationException exception) {
 
@@ -139,8 +139,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(Exception exception, HttpServletRequest request) {
 
-        // Don't print stack traces in tests unless debugging:
-        // exception.printStackTrace();
+        exception.printStackTrace(); // ✅ TEMP: enable to see exact cause in console
 
         if (expectsPdf(request)) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -149,6 +148,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "An unexpected system error occurred."));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<?> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+
+        if (expectsPdf(request)) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("message", "Upload failed: duplicate or invalid data."));
     }
 
     private boolean expectsPdf(HttpServletRequest request) {

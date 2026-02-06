@@ -1,27 +1,32 @@
 package com.pos.dao;
 
 import com.pos.pojo.Client;
+import com.pos.pojo.User;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
 @Repository
 public class ClientDao extends BaseDao {
 
-    private static final String BASE_QUERY =
+    private static final String SEARCH_COUNT_BASE_QUERY =
             " FROM Client c " +
                     " WHERE (:id IS NULL OR c.id = :id) " +
                     " AND (:name IS NULL OR c.name LIKE :name) " +
                     " AND (:email IS NULL OR c.email LIKE :email)";
 
-    public List<Client> search(Integer id, String name, String email, int page, int size) {
+    private static final String SEARCH_QUERY = "SELECT c" + SEARCH_COUNT_BASE_QUERY + " ORDER BY c.id";
+    private static final String COUNT_QUERY = "SELECT COUNT(c)" + SEARCH_COUNT_BASE_QUERY;
+    private static final String SELECT_BY_NAMES = "SELECT c FROM Client c WHERE c.name IN :names";
+    private static final String SELECT_BY_IDS = "SELECT c FROM Client c WHERE c.id IN :ids";
 
-        String jpql = "SELECT c" + BASE_QUERY + " ORDER BY c.id";
+    public List<Client> searchByParams(Integer id, String name, String email, int page, int size) {
 
-        return em().createQuery(jpql, Client.class)
+        return createQuery(SEARCH_QUERY, Client.class)
                 .setParameter("id", id)
-                .setParameter("name", name)
-                .setParameter("email", email)
+                .setParameter("name", like(name))
+                .setParameter("email", like(email))
                 .setFirstResult(page * size)
                 .setMaxResults(size)
                 .getResultList();
@@ -29,30 +34,34 @@ public class ClientDao extends BaseDao {
 
     public Long getCount(Integer id, String name, String email) {
 
-        String jpql = "SELECT COUNT(c)" + BASE_QUERY;
-
-        return em().createQuery(jpql, Long.class)
+        return createQuery(COUNT_QUERY, Long.class)
                 .setParameter("id", id)
-                .setParameter("name", name)
-                .setParameter("email", email)
+                .setParameter("name", like(name))
+                .setParameter("email", like(email))
                 .getSingleResult();
     }
 
     public List<Client> selectByNames(List<String> names) {
-        if (names == null || names.isEmpty()) return List.of();
+        if (CollectionUtils.isEmpty(names)) return List.of();
 
-        String jpql = "SELECT c FROM Client c WHERE c.name IN :names";
-        return em().createQuery(jpql, Client.class)
+        return createQuery(SELECT_BY_NAMES, Client.class)
                 .setParameter("names", names)
                 .getResultList();
     }
 
     public List<Client> selectByIds(List<Integer> ids) {
-        if (ids == null || ids.isEmpty()) return List.of();
+        if (CollectionUtils.isEmpty(ids)) return List.of();
 
-        String jpql = "SELECT c FROM Client c WHERE c.id IN :ids";
-        return em().createQuery(jpql, Client.class)
+        return createQuery(SELECT_BY_IDS, Client.class)
                 .setParameter("ids", ids)
                 .getResultList();
+    }
+
+    public Client selectById(Integer id) {
+        return select(id, Client.class);
+    }
+
+    private static String like(String value) {
+        return value == null ? null : "%" + value + "%";
     }
 }

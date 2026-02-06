@@ -1,6 +1,5 @@
 package com.pos.controller;
 
-import com.pos.dto.InvoiceDto;
 import com.pos.dto.OrderDto;
 import com.pos.exception.ApiException;
 import com.pos.model.data.InvoiceData;
@@ -10,6 +9,7 @@ import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.OrderForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZonedDateTime;
@@ -22,12 +22,8 @@ public class OrderController {
     @Autowired
     private OrderDto orderDto;
 
-    @Autowired
-    private InvoiceDto invoiceDto;
-
     @RequestMapping(method = RequestMethod.POST)
-    public Integer create(@RequestBody OrderForm orderForm)
-            throws ApiException {
+    public Integer create(@RequestBody OrderForm orderForm) throws ApiException {
         return orderDto.create(orderForm);
     }
 
@@ -42,30 +38,25 @@ public class OrderController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) throws ApiException {
-
         return orderDto.search(id, start, end, status, page, size);
     }
 
-    @RequestMapping(
-            value = "/{orderId}/items",
-            method = RequestMethod.GET
-    )
-    public List<OrderItemData> getItems(
-            @PathVariable Integer orderId)
-            throws ApiException {
-
+    @RequestMapping(value = "/{orderId}/items", method = RequestMethod.GET)
+    public List<OrderItemData> getItems(@PathVariable Integer orderId) throws ApiException {
         return orderDto.getItems(orderId);
     }
 
-    @RequestMapping(
-            value = "/{orderId}/invoice",
-            method = RequestMethod.POST
-    )
-    public InvoiceData invoice(
-            @PathVariable Integer orderId)
-            throws ApiException {
+    @RequestMapping(value = "/{orderId}/invoice", method = RequestMethod.POST)
+    public InvoiceData invoice(@PathVariable Integer orderId) throws ApiException {
+        return orderDto.invoice(orderId);
+    }
 
-        return invoiceDto.generate(orderId);
+    @RequestMapping(
+            value = "/{orderId}/invoice/download",
+            method = RequestMethod.GET,
+            produces = "application/pdf"
+    )
+    public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws ApiException {
+        return orderDto.downloadInvoiceResponse(orderId);
     }
 }
-

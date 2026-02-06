@@ -27,8 +27,8 @@ public class ClientDto extends AbstractDto {
 
     public void update(String name, @Valid ClientForm clientForm) throws ApiException {
         normalize(clientForm);
-        Client ClientPojo = ClientConversion.convertFormToPojo(clientForm);
-        clientApi.update(name, ClientPojo);
+        Client clientPojo = ClientConversion.convertFormToPojo(clientForm);
+        clientApi.update(name, clientPojo);
     }
 
     public PaginatedResponse<ClientData> getClients(Integer id, String name, String email, Integer pageNumber, Integer pageSize) throws ApiException {

@@ -29,7 +29,6 @@ public class ClientController {
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size
     ) throws ApiException {
-
         return clientDto.getClients(id, name, email, page, size);
     }
 

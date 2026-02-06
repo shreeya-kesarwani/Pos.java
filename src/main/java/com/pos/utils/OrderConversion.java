@@ -21,15 +21,6 @@ public class OrderConversion {
         return d;
     }
 
-    public static Double calculateTotalAmount(List<OrderItem> items) {
-        double total = 0.0;
-
-        for (OrderItem item : items) {
-            total += item.getQuantity() * item.getSellingPrice();
-        }
-        return total;
-    }
-
     public static OrderItemData toOrderItemData(
             OrderItem item,
             String barcode,
@@ -56,11 +47,6 @@ public class OrderConversion {
         }
 
         return list;
-    }
-
-    public static Order toOrderPojo(OrderForm form) {
-        Order o = new Order();
-        return o;
     }
 
     public static OrderItem toOrderItemPojo(

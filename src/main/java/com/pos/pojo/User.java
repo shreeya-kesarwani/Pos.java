@@ -8,7 +8,7 @@ import lombok.Setter;
 
 @Entity
 @Table(uniqueConstraints = {
-        @UniqueConstraint(name= "User_email_uk", columnNames = "email")
+        @UniqueConstraint(name= "pos_user_email_uk", columnNames = "email")
 })
 @Getter
 @Setter
@@ -24,7 +24,6 @@ public class User extends AbstractPojo {
 
     @Column(nullable = false)
     private String passwordHash;
-    //todo rename to password - which hashing algo used, which library
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

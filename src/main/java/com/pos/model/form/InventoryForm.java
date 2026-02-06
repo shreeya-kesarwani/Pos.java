@@ -11,6 +11,7 @@ import lombok.Setter;
 public class InventoryForm {
     @NotBlank
     private String barcode;
+
     @NotNull
     @Min(value = 1)
     private Integer quantity;

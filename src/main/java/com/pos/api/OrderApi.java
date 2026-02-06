@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.ZonedDateTime;
 import java.util.List;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 @Component
 @Transactional(rollbackFor = ApiException.class)
 public class OrderApi {
@@ -27,50 +29,61 @@ public class OrderApi {
 
     @Transactional(readOnly = true)
     public Order getCheck(Integer orderId) throws ApiException {
-        Order order = orderDao.select(orderId, Order.class);
-        if (order == null) throw new ApiException("Order not found: " + orderId);
+        Order order = orderDao.selectById(orderId);
+        if (order == null) {
+            throw new ApiException(ORDER_NOT_FOUND.value() + ": " + orderId);
+        }
         return order;
     }
 
     public void updateStatus(Integer orderId, OrderStatus newStatus) throws ApiException {
         if (newStatus == null) {
-            throw new ApiException("Status is required");
+            throw new ApiException(STATUS_REQUIRED.value());
         }
-        Order order = getCheck(orderId);
-        OrderStatus current = order.getStatus();
 
-        if (current == OrderStatus.INVOICED) {
-            throw new ApiException("Cannot change status of an INVOICED order");
+        Order order = getCheck(orderId);
+
+        if (order.getStatus() == OrderStatus.INVOICED) {
+            throw new ApiException(CANNOT_CHANGE_INVOICED_ORDER.value() + ": " + orderId);
         }
-        if (newStatus == OrderStatus.INVOICED) {
-            throw new ApiException("Use attachInvoice() to mark an order INVOICED");
-        }
+
         order.setStatus(newStatus);
     }
 
     public void attachInvoice(Integer orderId, String path) throws ApiException {
         if (path == null || path.isBlank()) {
-            throw new ApiException("Invoice path is required");
-        }
-        Order order = getCheck(orderId);
-        if (order.getStatus() == OrderStatus.INVOICED) {
-            throw new ApiException("Order already invoiced");
+            throw new ApiException(INVOICE_PATH_REQUIRED.value());
         }
 
-        if (order.getStatus() != OrderStatus.CREATED) {
-            throw new ApiException("Invoice can only be generated for CREATED orders");
+        Order order = getCheck(orderId);
+
+        if (order.getStatus() == OrderStatus.INVOICED) {
+            throw new ApiException(ORDER_ALREADY_INVOICED.value() + ": " + orderId);
         }
+
         order.setInvoicePath(path);
         order.setStatus(OrderStatus.INVOICED);
     }
 
     @Transactional(readOnly = true)
-    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
+    public List<Order> search(
+            Integer id,
+            ZonedDateTime start,
+            ZonedDateTime end,
+            OrderStatus status,
+            int page,
+            int size
+    ) {
         return orderDao.search(id, start, end, status, page, size);
     }
 
     @Transactional(readOnly = true)
-    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
+    public Long getCount(
+            Integer id,
+            ZonedDateTime start,
+            ZonedDateTime end,
+            OrderStatus status
+    ) {
         return orderDao.getCount(id, start, end, status);
     }
 }
