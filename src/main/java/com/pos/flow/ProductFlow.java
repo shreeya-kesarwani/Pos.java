@@ -9,9 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.pos.model.constants.ErrorMessages.INVALID_CLIENT_NAME_BULK_UPLOAD;
@@ -38,7 +36,6 @@ public class ProductFlow {
     public void addBulk(List<Product> products, List<String> clientNames) throws ApiException {
         if (products == null || products.isEmpty()) return;
 
-        // Resolve all client names -> ids in one go
         List<String> distinctNames = clientNames.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
@@ -58,7 +55,39 @@ public class ProductFlow {
         if (!missing.isEmpty()) {
             throw new ApiException(INVALID_CLIENT_NAME_BULK_UPLOAD.value() + ": " + missing);
         }
-
         productApi.addBulk(products, clientNames, clientIdByName);
+    }
+
+    public Map<String, Object> searchProducts(String name,
+                                                     String barcode,
+                                                     String clientName,
+                                                     Integer pageNumber,
+                                                     Integer pageSize) throws ApiException {
+
+        List<Product> products = productApi.search(name, barcode, clientName, pageNumber, pageSize);
+        long total = productApi.getCount(name, barcode, clientName);
+
+        Set<Integer> clientIds = new HashSet<>();
+        for (Product p : products) {
+            if (p.getClientId() != null) clientIds.add(p.getClientId());
+        }
+
+        Map<Integer, String> clientNameById = Map.of();
+        if (!clientIds.isEmpty()) {
+            List<Client> clients = clientApi.getByIds(new ArrayList<>(clientIds));
+            Map<Integer, String> map = new HashMap<>();
+            for (Client c : clients) {
+                if (c.getId() != null && c.getName() != null) {
+                    map.putIfAbsent(c.getId(), c.getName());
+                }
+            }
+            clientNameById = map;
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("products", products);
+        result.put("total", total);
+        result.put("clientNameById", clientNameById);
+        return result;
     }
 }

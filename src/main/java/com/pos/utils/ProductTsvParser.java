@@ -19,7 +19,6 @@ public class ProductTsvParser {
         try {
             TsvParser.validateHeader(rows.get(0), "barcode", "clientname", "name", "mrp", "imageurl");
         } catch (ApiException headerEx) {
-            // Create an error TSV with an "error" column; mark all rows with same header error
             List<String> errors = new ArrayList<>();
             for (int i = 1; i < rows.size(); i++) {
                 errors.add("Invalid header: " + headerEx.getMessage());
@@ -111,7 +110,6 @@ public class ProductTsvParser {
         form.setBarcode(form.getBarcode().trim());
         form.setClientName(form.getClientName().trim());
         form.setName(form.getName().trim());
-        // imageUrl already trimmed by TsvParser.s
         if (form.getImageUrl() != null && form.getImageUrl().isBlank()) form.setImageUrl(null);
     }
 

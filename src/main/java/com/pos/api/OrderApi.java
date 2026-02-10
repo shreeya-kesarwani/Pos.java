@@ -66,24 +66,12 @@ public class OrderApi {
     }
 
     @Transactional(readOnly = true)
-    public List<Order> search(
-            Integer id,
-            ZonedDateTime start,
-            ZonedDateTime end,
-            OrderStatus status,
-            int page,
-            int size
-    ) {
+    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
         return orderDao.search(id, start, end, status, page, size);
     }
 
     @Transactional(readOnly = true)
-    public Long getCount(
-            Integer id,
-            ZonedDateTime start,
-            ZonedDateTime end,
-            OrderStatus status
-    ) {
+    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
         return orderDao.getCount(id, start, end, status);
     }
 }

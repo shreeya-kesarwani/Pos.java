@@ -6,13 +6,16 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 @Component
 public class RoleAuthorizationFilter extends OncePerRequestFilter {
@@ -45,15 +48,25 @@ public class RoleAuthorizationFilter extends OncePerRequestFilter {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
-        if (auth == null || auth.getPrincipal() == null || !(auth.getPrincipal() instanceof AuthPrincipal)) {
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             filterChain.doFilter(request, response);
             return;
         }
 
+        Optional<String> roleOpt = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> a != null && a.startsWith("ROLE_"))
+                .map(a -> a.substring("ROLE_".length()))
+                .findFirst();
+
+        if (roleOpt.isEmpty()) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        String role = roleOpt.get();
         String method = request.getMethod().toUpperCase();
         String path = request.getServletPath();
-
-        String role = ((AuthPrincipal) auth.getPrincipal()).getRole().toString();
 
         boolean allowed = csvService.isAllowed(method, path, role);
 

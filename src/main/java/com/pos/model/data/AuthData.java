@@ -8,4 +8,6 @@ import lombok.Setter;
 @Setter
 public class AuthData extends SessionData {
     private String token;
+    private String email;
+    private UserRole role;
 }

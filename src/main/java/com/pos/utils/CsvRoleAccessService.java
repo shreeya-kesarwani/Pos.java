@@ -35,10 +35,7 @@ public class CsvRoleAccessService {
                     lineNo++;
                     line = line.trim();
 
-                    // Skip empty lines + comments
                     if (line.isEmpty() || line.startsWith("#")) continue;
-
-                    // Expected: METHOD,PATH,ROLES
                     String[] parts = line.split(",", -1);
                     if (parts.length < 3) {
                         throw new IllegalArgumentException("Invalid CSV format at line " + lineNo + ": " + line);
@@ -58,11 +55,6 @@ public class CsvRoleAccessService {
         }
     }
 
-    /**
-     * @param method HTTP method (GET/POST/PUT/DELETE...)
-     * @param path servletPath (no /api if context-path is /api)
-     * @param role user role string (e.g. SUPERVISOR / OPERATOR)
-     */
     public boolean isAllowed(String method, String path, String role) {
         if (method == null || path == null || role == null) return false;
 
@@ -70,7 +62,6 @@ public class CsvRoleAccessService {
         String p = normalizePath(path.trim());
         String r = role.trim().toUpperCase(Locale.ROOT);
 
-        // Secure-by-default: deny unless explicitly allowed
         for (Rule rule : rules) {
             if (rule.matches(m, p) && rule.allowsRole(r)) {
                 return true;
@@ -79,18 +70,13 @@ public class CsvRoleAccessService {
         return false;
     }
 
-    // ---------------- helpers ----------------
-
     private static String normalizePath(String p) {
         if (!p.startsWith("/")) p = "/" + p;
-        // Remove trailing slash (except root)
         if (p.length() > 1 && p.endsWith("/")) p = p.substring(0, p.length() - 1);
         return p;
     }
 
     private static Set<String> parseRoles(String rolesRaw) {
-        // allow separators: | or ,
-        // allow wildcard: *
         if (rolesRaw.equals("*")) {
             return Set.of("*");
         }
@@ -105,8 +91,6 @@ public class CsvRoleAccessService {
         }
         return roles;
     }
-
-    // ---------------- rule model ----------------
 
     private static final class Rule {
         private final String method;     // e.g. GET / POST / * (optional support)
@@ -123,7 +107,6 @@ public class CsvRoleAccessService {
         }
 
         boolean matches(String reqMethod, String reqPath) {
-            // If you want method wildcard in CSV like "*", enable this:
             if (!"*".equals(method) && !method.equals(reqMethod)) return false;
             return pathRegex.matcher(reqPath).matches();
         }
@@ -133,14 +116,9 @@ public class CsvRoleAccessService {
         }
 
         private static String toRegex(String pathSpec) {
-            // Supports:
-            // 1) /products/*  => prefix wildcard
-            // 2) /products/{barcode} => segment wildcard
-            // 3) exact paths
 
             String p = pathSpec;
 
-            // Escape regex special chars first (except * and { } which we handle)
             p = p.replace(".", "\\.")
                     .replace("?", "\\?")
                     .replace("+", "\\+")
@@ -152,11 +130,7 @@ public class CsvRoleAccessService {
                     .replace("$", "\\$")
                     .replace("|", "\\|");
 
-            // Convert {var} to a single path segment wildcard
             p = p.replaceAll("\\{[^/]+\\}", "[^/]+");
-
-            // Convert trailing /* or any * to match remaining path
-            // Example: /products/* => /products/.* (but still matches /products/abc)
             p = p.replace("*", ".*");
 
             return p;

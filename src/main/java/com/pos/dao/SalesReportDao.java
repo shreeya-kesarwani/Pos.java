@@ -8,6 +8,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static java.sql.Types.NULL;
+
 @Repository
 public class SalesReportDao extends BaseDao {
 
@@ -29,6 +31,12 @@ public class SalesReportDao extends BaseDao {
 
     public List<SalesReportData> getSalesReportRows(
             LocalDate startDate, LocalDate endDate, Integer clientId) {
+
+        if(clientId == null){
+            System.out.println("Client id: null");
+        }
+
+        System.out.println("Client id:" + clientId);
 
         Query query = createNativeQuery(SALES_REPORT_SQL)
                 .setParameter("startDate", startDate)

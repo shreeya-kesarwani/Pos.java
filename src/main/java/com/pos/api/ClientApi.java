@@ -41,6 +41,9 @@ public class ClientApi {
 
     @Transactional(readOnly = true)
     public Client getCheckByName(String name) throws ApiException {
+        if(name==null){
+            return null;
+        }
         Client client = getByName(name);
         if (client == null) {
             throw new ApiException(CLIENT_NAME_NOT_FOUND.value() + ": " + name);

@@ -31,3 +31,6 @@ GET,/reports/sales,OPERATOR
 GET,/reports/sales,SUPERVISOR
 GET,/reports/day-sales,OPERATOR
 GET,/reports/day-sales,SUPERVISOR
+
+GET,/orders/*/invoice/download,OPERATOR
+GET,/orders/*/invoice/download,SUPERVISOR

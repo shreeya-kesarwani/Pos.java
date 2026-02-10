@@ -122,7 +122,6 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", "Only supervisors can upload or edit master data."));
     }
 
-    // ✅ NEW: If request hits static-resource handler (like /test/...) treat as 404, not 500
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<?> handleNoResource(NoResourceFoundException ex, HttpServletRequest request) {
 
@@ -139,7 +138,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> handleGeneral(Exception exception, HttpServletRequest request) {
 
-        exception.printStackTrace(); // ✅ TEMP: enable to see exact cause in console
+        exception.printStackTrace();
 
         if (expectsPdf(request)) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

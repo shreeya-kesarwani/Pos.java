@@ -56,8 +56,6 @@ public enum ErrorMessages {
     INVALID_UPLOAD_BARCODE_MISMATCH("Invalid upload: barcode list size mismatch"),
     CANNOT_INVOICE_EMPTY_ORDER("Cannot invoice an empty order"),
     INVOICE_NOT_GENERATED_YET("Invoice not generated yet for order"),
-    INVOICE_PATH_MISSING("Invoice path missing for order"),
-    FAILED_TO_READ_INVOICE_FILE("Failed to read invoice file"),
     INVALID_STATUS("Invalid status"),
     FAILED_TO_STORE_INVOICE_PDF("Failed to store invoice PDF"),
     EMAIL_REQUIRED("email is required"),
@@ -67,11 +65,9 @@ public enum ErrorMessages {
 
 
     private final String msg;
-
     ErrorMessages(String msg) {
         this.msg = msg;
     }
-
     public String value() {
         return msg;
     }

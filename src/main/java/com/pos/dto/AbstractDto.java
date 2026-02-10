@@ -37,11 +37,11 @@ public abstract class AbstractDto {
         return (string == null || string.isEmpty()) ? null : string.trim();
     }
 
-    //todo - either use this everywhere or @valid
     protected <T> void validateForm(T obj) throws ApiException {
         Set<ConstraintViolation<T>> violations = validator.validate(obj);
         if (!violations.isEmpty()) {
             throw new ApiException(violations.iterator().next().getMessage());
         }
     }
+
 }

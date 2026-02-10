@@ -55,47 +55,32 @@ public class ProductDto extends AbstractDto {
         productFlow.addBulk(payload.products(), payload.clientNames());
     }
 
-    public PaginatedResponse<ProductData> getProducts(
-            String name,
-            String barcode,
-            String clientName,
-            Integer pageNumber,
-            Integer pageSize
-    ) throws ApiException {
+    public PaginatedResponse<ProductData> getProducts(String name, String barcode, String clientName, Integer pageNumber, Integer pageSize) throws ApiException {
 
         String normalizedName = normalize(name);
         String normalizedBarcode = normalize(barcode);
         String normalizedClientName = normalize(clientName);
 
-        List<Product> products = productApi.search(
+        Map<String, Object> result = productFlow.searchProducts(
                 normalizedName, normalizedBarcode, normalizedClientName,
                 pageNumber, pageSize
         );
 
-        Set<Integer> clientIds = products.stream()
-                .map(Product::getClientId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+        List<Product> products = (List<Product>) result.get("products");
 
-        Map<Integer, String> clientNameById;
-        if (clientIds.isEmpty()) {
-            clientNameById = Map.of();
-        } else {
-            List<Client> clients = clientApi.getByIds(new ArrayList<>(clientIds));
-            clientNameById = clients.stream()
-                    .collect(Collectors.toMap(Client::getId, Client::getName, (a, b) -> a));
+        Object totalObj = result.get("total");
+        long total = (totalObj instanceof Long) ? (Long) totalObj : ((Number) totalObj).longValue();
+
+        Map<Integer, String> clientNameById = (Map<Integer, String>) result.get("clientNameById");
+
+        List<ProductData> dataList = new ArrayList<>();
+        for (Product p : products) {
+            String cName = clientNameById.getOrDefault(p.getClientId(), "Unknown Client");
+            dataList.add(ProductConversion.toData(p, cName));
         }
-
-        List<ProductData> dataList = products.stream()
-                .map(p -> ProductConversion.toData(
-                        p,
-                        clientNameById.getOrDefault(p.getClientId(), "Unknown Client")
-                ))
-                .toList();
-
-        Long total = productApi.getCount(normalizedName, normalizedBarcode, normalizedClientName);
         return PaginatedResponse.of(dataList, total, pageNumber);
     }
+
 
     public Long getCount() {
         return productApi.getCount(null, null, null);

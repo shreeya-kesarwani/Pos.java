@@ -28,15 +28,19 @@ public class DaySalesDao extends BaseDao {
           AND o.updatedAt < :end
     """;
 
-    public List<DaySales> selectInRange(ZonedDateTime startDate, ZonedDateTime endDate) {
+    // ✅ For a single day: [start, start+1day)
+    public List<DaySales> selectInRange(ZonedDateTime startDate) {
+        ZonedDateTime nextDay = startDate.plusDays(1);
+
         return createQuery(SELECT_IN_RANGE, DaySales.class)
                 .setParameter("start", startDate)
-                .setParameter("end", endDate)
+                .setParameter("end", nextDay)
                 .getResultList();
     }
 
     public Object[] selectInvoicedSalesAggregatesForDay(ZonedDateTime startDate) {
         ZonedDateTime nextDay = startDate.plusDays(1);
+
         return createQuery(SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY, Object[].class)
                 .setParameter("start", startDate)
                 .setParameter("end", nextDay)

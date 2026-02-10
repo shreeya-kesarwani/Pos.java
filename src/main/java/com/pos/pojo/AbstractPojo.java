@@ -16,7 +16,6 @@ public abstract class AbstractPojo {
     @Column(nullable = false, updatable = false)
     private ZonedDateTime createdAt;
 
-    //todo check if it can be null
     @UpdateTimestamp
     @Column(nullable = false)
     private ZonedDateTime updatedAt;

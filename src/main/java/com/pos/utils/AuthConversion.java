@@ -1,7 +1,7 @@
 package com.pos.utils;
 
-import com.pos.model.data.AuthData;
 import com.pos.model.constants.UserRole;
+import com.pos.model.data.AuthData;
 import com.pos.pojo.User;
 
 public class AuthConversion {
@@ -17,11 +17,7 @@ public class AuthConversion {
     }
 
     public static AuthData convertUserToSignupData(User user) {
-        AuthData data = new AuthData();
-        data.setUserId(user.getId());
-        data.setRole(user.getRole());
-        data.setToken(null);
-        return data;
+        return convertUserToAuthData(user);
     }
 
     public static AuthData convertUserToLoginData(User user, String token) {
@@ -29,6 +25,17 @@ public class AuthConversion {
         data.setToken(token);
         data.setUserId(user.getId());
         data.setRole(user.getRole());
+        data.setEmail(user.getEmail());
         return data;
     }
+
+    public static AuthData convertUserToAuthData(User user) {
+        AuthData data = new AuthData();
+        data.setUserId(user.getId());
+        data.setRole(user.getRole());
+        data.setEmail(user.getEmail());
+        data.setToken(null);
+        return data;
+    }
+
 }

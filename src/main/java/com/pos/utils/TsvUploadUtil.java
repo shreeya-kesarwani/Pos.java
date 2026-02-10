@@ -17,9 +17,6 @@ public class TsvUploadUtil {
         T map(String[] row, int lineNumber) throws ApiException;
     }
 
-    /**
-     * Reads TSV, validates header, maps rows, and throws UploadValidationException if any row has errors.
-     */
     public static <T> List<T> parseOrThrow(
             List<String[]> rows,
             String errorFilePrefix,

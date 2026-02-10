@@ -3,7 +3,6 @@ package com.pos.api;
 import com.pos.dao.UserDao;
 import com.pos.exception.ApiException;
 import com.pos.model.constants.UserRole;
-import com.pos.model.data.AuthData;
 import com.pos.pojo.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -11,9 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import static com.pos.model.constants.ErrorMessages.*;
-import static com.pos.security.JwtUtil.createToken;
 import static com.pos.utils.AuthConversion.convertSignupToUser;
-import static com.pos.utils.AuthConversion.convertUserToLoginData;
 
 @Component
 @Transactional(rollbackFor = ApiException.class)
@@ -31,26 +28,31 @@ public class AuthApi {
         }
 
         String passwordHash = encoder.encode(password);
-
         User user = convertSignupToUser(email, passwordHash, UserRole.OPERATOR);
-
         userDao.insert(user);
         return user;
     }
 
     @Transactional(readOnly = true)
-    public AuthData login(String email, String password) throws ApiException {
-        String normalizedEmail = normalizeEmail(email);
+    public User validateLogin(String email, String password) throws ApiException {
 
-        User user = userDao.findByEmail(normalizedEmail)
-                .orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + normalizedEmail));
+        User user = userDao.findByEmail(email)
+                .orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + email));
 
         if (!encoder.matches(password, user.getPasswordHash())) {
             throw new ApiException(INVALID_CREDENTIALS.value());
         }
 
-        String token = createToken(user.getId(), user.getRole());
-        return convertUserToLoginData(user, token);
+        return user;
+    }
+
+    @Transactional(readOnly = true)
+    public User getById(Integer userId) throws ApiException {
+        User user = userDao.selectById(userId);
+        if (user == null) {
+            throw new ApiException(USER_NOT_FOUND.value() + ": " + userId);
+        }
+        return user;
     }
 
     public void changePassword(Integer userId, String currentPassword, String newPassword)
@@ -65,20 +67,6 @@ public class AuthApi {
             throw new ApiException(CURRENT_PASSWORD_INCORRECT.value());
         }
 
-        validatePassword(newPassword);
         user.setPasswordHash(encoder.encode(newPassword));
-    }
-
-    private String normalizeEmail(String email) throws ApiException {
-        if (email == null || email.trim().isEmpty()) {
-            throw new ApiException(EMAIL_CANNOT_BE_EMPTY.value());
-        }
-        return email.trim().toLowerCase();
-    }
-
-    private void validatePassword(String password) throws ApiException {
-        if (password == null || password.trim().isEmpty()) {
-            throw new ApiException(PASSWORD_CANNOT_BE_EMPTY.value());
-        }
     }
 }

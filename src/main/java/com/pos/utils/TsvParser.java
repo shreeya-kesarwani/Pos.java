@@ -40,17 +40,15 @@ public class TsvParser {
     }
 
     public static byte[] buildErrorTsv(List<String[]> originalRows, List<String> rowErrors) {
-        // originalRows includes header at index 0
-        // rowErrors aligns to data rows only (index 0 = row 1 after header)
+
         StringBuilder sb = new StringBuilder();
 
-        // header + error col
         String[] header = originalRows.get(0);
         sb.append(join(header)).append("\t").append("error").append("\n");
 
         for (int i = 1; i < originalRows.size(); i++) {
             String[] row = originalRows.get(i);
-            String err = rowErrors.get(i - 1); // data row index
+            String err = rowErrors.get(i - 1);
             sb.append(join(row)).append("\t").append(err == null ? "" : err).append("\n");
         }
 

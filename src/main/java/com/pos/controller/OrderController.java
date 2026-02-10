@@ -9,7 +9,7 @@ import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.OrderForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.ZonedDateTime;
@@ -53,10 +53,16 @@ public class OrderController {
 
     @RequestMapping(
             value = "/{orderId}/invoice/download",
-            method = RequestMethod.GET,
-            produces = "application/pdf"
+            method = RequestMethod.GET
     )
     public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws ApiException {
-        return orderDto.downloadInvoiceResponse(orderId);
+        ResponseEntity<byte[]> res = orderDto.downloadInvoiceResponse(orderId);
+
+        return ResponseEntity
+                .status(res.getStatusCode())
+                .header(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"invoice_" + orderId + ".pdf\"")
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(res.getBody());
     }
 }

@@ -25,20 +25,11 @@ public class DaySalesApi {
     DaySalesDao daySalesDao;
 
     @Transactional(readOnly = true)
-    public List<DaySales> getDaySales(ZonedDateTime startDate, ZonedDateTime endDate) throws ApiException {
-
-        if (startDate.isAfter(endDate)) {
-            throw new ApiException(
-                    START_DATE_AFTER_END_DATE.value() +
-                            " | startDate=" + startDate +
-                            ", endDate=" + endDate
-            );
-        }
+    public List<DaySales> getDaySales(ZonedDateTime startDate) throws ApiException {
 
         ZonedDateTime startUtc = toUtcStartOfDay(startDate);
-        ZonedDateTime endUtcExclusive = toUtcStartOfNextDay(endDate);
 
-        List<DaySales> rows = daySalesDao.selectInRange(startUtc, endUtcExclusive);
+        List<DaySales> rows = daySalesDao.selectInRange(startUtc);
         return rows == null ? List.of() : rows;
     }
 

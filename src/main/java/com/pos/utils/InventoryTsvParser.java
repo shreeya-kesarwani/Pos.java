@@ -45,7 +45,6 @@ public class InventoryTsvParser {
                 validateShape(form);
                 normalizeShape(form);
 
-                // ✅ Duplicate barcode check (after normalize so " abc " and "abc" match)
                 String bc = form.getBarcode();
                 if (!seenBarcodes.add(bc)) {
                     throw new ApiException("Duplicate barcode found in TSV: " + bc);
