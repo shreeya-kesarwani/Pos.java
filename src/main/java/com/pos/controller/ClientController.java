@@ -32,16 +32,11 @@ public class ClientController {
         return clientDto.getClients(id, name, email, page, size);
     }
 
-    @RequestMapping(value = "/{clientName}", method = RequestMethod.PUT)
+    @RequestMapping(value = "/{id}", method = RequestMethod.PUT)
     public void update(
-            @PathVariable(name = "clientName") String clientName,
-            @Valid @RequestBody ClientForm clientForm
+            @PathVariable Integer id,
+            @Valid @RequestBody ClientForm form
     ) throws ApiException {
-        clientDto.update(clientName, clientForm);
-    }
-
-    @RequestMapping(value = "/count", method = RequestMethod.GET)
-    public Long getCount() {
-        return clientDto.getTotalClients();
+        clientDto.update(id, form);
     }
 }

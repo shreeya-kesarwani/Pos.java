@@ -13,7 +13,7 @@ public class InventoryTsvParser {
 
     private InventoryTsvParser() {}
 
-    public static InventoryTsvParseResult parse(MultipartFile file)
+    public static List<InventoryForm> parse(MultipartFile file)
             throws ApiException, IOException {
 
         List<String[]> rows = TsvParser.read(file.getInputStream());
@@ -76,7 +76,7 @@ public class InventoryTsvParser {
             );
         }
 
-        return new InventoryTsvParseResult(forms, barcodes);
+        return forms;
     }
 
 
@@ -95,9 +95,4 @@ public class InventoryTsvParser {
     private static void normalizeShape(InventoryForm form) {
         form.setBarcode(form.getBarcode().trim());
     }
-
-    public record InventoryTsvParseResult(
-            List<InventoryForm> forms,
-            List<String> barcodes
-    ) {}
 }

@@ -47,8 +47,8 @@ public class OrderController {
     }
 
     @RequestMapping(value = "/{orderId}/invoice", method = RequestMethod.POST)
-    public InvoiceData invoice(@PathVariable Integer orderId) throws ApiException {
-        return orderDto.invoice(orderId);
+    public InvoiceData generateInvoice(@PathVariable Integer orderId) throws ApiException {
+        return orderDto.generateInvoice(orderId);
     }
 
     @RequestMapping(
@@ -56,7 +56,7 @@ public class OrderController {
             method = RequestMethod.GET
     )
     public ResponseEntity<byte[]> downloadInvoice(@PathVariable Integer orderId) throws ApiException {
-        ResponseEntity<byte[]> res = orderDto.downloadInvoiceResponse(orderId);
+        ResponseEntity<byte[]> res = orderDto.downloadInvoice(orderId);
 
         return ResponseEntity
                 .status(res.getStatusCode())

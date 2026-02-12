@@ -10,7 +10,8 @@ public enum ErrorMessages {
     EMAIL_CANNOT_BE_EMPTY("Email cannot be empty"),
     PASSWORD_CANNOT_BE_EMPTY("Password cannot be empty"),
     INVALID_EMAIL("Invalid email"),
-
+    NOT_LOGGED_IN("You are not logged in"),
+    INVALID_SESSION_PRINCIPAL("Invalid session principal"),
     USER_BULK_EMPTY("User list cannot be empty"),
 
     // ---------- Client ----------
@@ -38,6 +39,7 @@ public enum ErrorMessages {
     ORDER_ALREADY_INVOICED("Order already invoiced"),
     NO_ORDER_ITEMS_FOUND("No order items found for order"),
     EMPTY_ORDER_CANNOT_BE_INVOICED("Cannot invoice an empty order"),
+    SELLING_PRICE_CANNOT_BE_NEGATIVE("Selling price cannot be negative"),
 
     // ---------- Product ----------
     PRODUCT_NOT_FOUND("Product not found"),

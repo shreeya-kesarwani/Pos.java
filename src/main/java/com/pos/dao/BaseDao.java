@@ -40,4 +40,8 @@ public abstract class BaseDao {
     protected Query createNativeQuery(String sql) {
         return em().createNativeQuery(sql);
     }
+
+    protected String like(String value) {
+        return value == null ? null : "%" + value + "%";
+    }
 }

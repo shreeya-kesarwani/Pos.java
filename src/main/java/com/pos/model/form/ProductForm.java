@@ -13,7 +13,6 @@ public class ProductForm {
     @NotNull
     private String barcode;
 
-    @NotBlank
     private String clientName;
 
     @NotBlank

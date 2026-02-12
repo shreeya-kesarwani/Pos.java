@@ -14,30 +14,21 @@ import java.util.List;
 import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class SalesReportApi {
 
     @Autowired
     private SalesReportDao salesReportDao;
 
     @Transactional(readOnly = true)
-    public List<SalesReportData> getSalesReport(
-            LocalDate startDate,
-            LocalDate endDate,
-            Integer clientId
-    ) {
+    public List<SalesReportData> getSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) {
         return salesReportDao.getSalesReportRows(startDate, endDate, clientId);
     }
 
     @Transactional(readOnly = true)
-    public List<SalesReportData> getCheckSalesReport(
-            LocalDate startDate,
-            LocalDate endDate,
-            Integer clientId
-    ) throws ApiException {
+    public List<SalesReportData> getCheckSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) throws ApiException {
 
         List<SalesReportData> rows = getSalesReport(startDate, endDate, clientId);
-
         if (CollectionUtils.isEmpty(rows)) {
             throw new ApiException(
                     SALES_REPORT_EMPTY.value() +

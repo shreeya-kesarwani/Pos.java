@@ -40,9 +40,7 @@ public class AuthController {
     }
 
     @RequestMapping(value = "/change-password", method = RequestMethod.POST)
-    public void changePassword(
-            @Valid @RequestBody ChangePasswordForm form
-    ) throws ApiException {
+    public void changePassword(@Valid @RequestBody ChangePasswordForm form) throws ApiException {
         authDto.changePassword(form);
     }
 

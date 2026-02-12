@@ -5,7 +5,6 @@ import com.pos.exception.ApiException;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
-import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -21,24 +20,20 @@ public class ProductController {
     @Autowired
     private ProductDto productDto;
 
-    @Operation(summary = "Add a single product")
-    @RequestMapping(method = RequestMethod.POST)
+    @PostMapping
     public void add(@Valid @RequestBody ProductForm form) throws ApiException {
         productDto.add(form);
     }
 
-    @Operation(summary = "Upload products via TSV file")
-    @RequestMapping(
-            value = "/upload",
-            method = RequestMethod.POST,
-            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
-    )
-    public void upload(@RequestParam("file") MultipartFile file) throws ApiException, IOException {
-        productDto.addBulk(file);
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public void upload(
+            @RequestParam("clientId") Integer clientId,
+            @RequestParam("file") MultipartFile file
+    ) throws ApiException, IOException {
+        productDto.addBulk(clientId, file);
     }
 
-    @Operation(summary = "Search products (paginated)")
-    @RequestMapping(method = RequestMethod.GET)
+    @GetMapping
     public PaginatedResponse<ProductData> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String barcode,
@@ -49,18 +44,11 @@ public class ProductController {
         return productDto.getProducts(name, barcode, clientName, page, size);
     }
 
-    @Operation(summary = "Update product by barcode")
-    @RequestMapping(value = "/{barcode}", method = RequestMethod.PUT)
+    @PutMapping("/{barcode}")
     public void update(
             @PathVariable String barcode,
             @Valid @RequestBody ProductForm productForm
     ) throws ApiException {
         productDto.update(barcode, productForm);
-    }
-
-    @Operation(summary = "Count products")
-    @RequestMapping(value = "/count", method = RequestMethod.GET)
-    public Long getCount() {
-        return productDto.getCount();
     }
 }

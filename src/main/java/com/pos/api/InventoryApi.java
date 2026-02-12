@@ -8,12 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 
 import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class InventoryApi {
 
     @Autowired
@@ -26,11 +25,11 @@ public class InventoryApi {
 
     @Transactional(readOnly = true)
     public Inventory getCheck(Integer id) throws ApiException {
-        Inventory inv = get(id);
-        if (inv == null) {
+        Inventory inventory = get(id);
+        if (inventory == null) {
             throw new ApiException(INVENTORY_NOT_FOUND.value() + ": " + id);
         }
-        return inv;
+        return inventory;
     }
 
     @Transactional(readOnly = true)
@@ -47,13 +46,15 @@ public class InventoryApi {
         return inventory;
     }
 
-    public void add(List<Inventory> inventories, List<String> barcodes, Map<String, Integer> productIdByBarcode)
-            throws ApiException {
+    @Transactional(readOnly = true)
+    public List<Inventory> findByProductIds(List<Integer> productIds, int page, int size) {
+        return inventoryDao.findByProductIds(productIds, page, size);
+    }
 
-        attachProductIds(inventories, barcodes, productIdByBarcode);
-
+    public void add(List<Inventory> inventories) throws ApiException {
         for (Inventory inventory : inventories) {
-            Inventory existing = inventoryDao.selectByProductId(inventory.getProductId());
+            Integer productId = inventory.getProductId();
+            Inventory existing = inventoryDao.selectByProductId(productId);
             if (existing == null) {
                 inventoryDao.insert(inventory);
             } else {
@@ -62,28 +63,11 @@ public class InventoryApi {
         }
     }
 
-    public void update(Integer id, Inventory inventory) throws ApiException {
-        Inventory existing = getCheck(id);
-        existing.setQuantity(inventory.getQuantity());
-    }
-
-    @Transactional(readOnly = true)
-    public List<Inventory> search(String barcode, String productName, int page, int size) {
-        return inventoryDao.search(barcode, productName, page, size);
-    }
-
-    @Transactional(readOnly = true)
-    public Long getCount(String barcode, String productName) {
-        return inventoryDao.getCount(barcode, productName);
-    }
-
-    public void allocate(Integer productId, Integer quantity) throws ApiException {
+    public void reduceInventory(Integer productId, Integer quantity) throws ApiException {
         if (quantity == null || quantity <= 0) {
             throw new ApiException(QUANTITY_MUST_BE_POSITIVE.value() + ": " + quantity);
         }
-
         Inventory inventory = getCheckByProductId(productId);
-
         if (inventory.getQuantity() < quantity) {
             throw new ApiException(
                     INSUFFICIENT_INVENTORY.value() +
@@ -92,25 +76,11 @@ public class InventoryApi {
                             ", requested=" + quantity
             );
         }
-
         inventory.setQuantity(inventory.getQuantity() - quantity);
     }
 
-    private void attachProductIds(
-            List<Inventory> inventories,
-            List<String> barcodes,
-            Map<String, Integer> productIdByBarcode
-    ) throws ApiException {
-
-        for (int i = 0; i < inventories.size(); i++) {
-            String barcode = barcodes.get(i);
-            Integer productId = productIdByBarcode.get(barcode);
-
-            if (productId == null) {
-                throw new ApiException(PRODUCT_NOT_FOUND_FOR_BARCODE.value() + ": " + barcode);
-            }
-
-            inventories.get(i).setProductId(productId);
-        }
+    public Long getCountByProductIds(List<Integer> productIds) {
+        return inventoryDao.getCountByProductIds(productIds);
     }
+
 }

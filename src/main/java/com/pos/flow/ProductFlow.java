@@ -10,14 +10,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.stream.Collectors;
-
-import static com.pos.model.constants.ErrorMessages.INVALID_CLIENT_NAME_BULK_UPLOAD;
 
 @Component
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class ProductFlow {
-
+//todo refactor this file
     @Autowired private ProductApi productApi;
     @Autowired private ClientApi clientApi;
 
@@ -33,40 +30,23 @@ public class ProductFlow {
         productApi.update(barcode, product);
     }
 
-    public void addBulk(List<Product> products, List<String> clientNames) throws ApiException {
+    public void addBulk(List<Product> products, Integer clientId) throws ApiException {
         if (products == null || products.isEmpty()) return;
-
-        List<String> distinctNames = clientNames.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(s -> !s.isEmpty())
-                .distinct()
-                .toList();
-
-        List<Client> clients = clientApi.getByNames(distinctNames);
-
-        Map<String, Integer> clientIdByName = clients.stream()
-                .collect(Collectors.toMap(Client::getName, Client::getId, (a, b) -> a));
-
-        List<String> missing = distinctNames.stream()
-                .filter(n -> !clientIdByName.containsKey(n))
-                .toList();
-
-        if (!missing.isEmpty()) {
-            throw new ApiException(INVALID_CLIENT_NAME_BULK_UPLOAD.value() + ": " + missing);
+        if (clientId == null) {
+            throw new ApiException("clientId is required for bulk upload");
         }
-        productApi.addBulk(products, clientNames, clientIdByName);
+        clientApi.getCheck(clientId);
+        for (Product p : products) {
+            p.setClientId(clientId);
+        }
+        productApi.addBulk(products);
     }
 
-    public Map<String, Object> searchProducts(String name,
-                                                     String barcode,
-                                                     String clientName,
-                                                     Integer pageNumber,
-                                                     Integer pageSize) throws ApiException {
-
+    @Transactional(readOnly = true)
+    public Map<String, Object> searchProducts(String name, String barcode, String clientName, Integer pageNumber, Integer pageSize) throws ApiException {
+//todo create a model class
         List<Product> products = productApi.search(name, barcode, clientName, pageNumber, pageSize);
         long total = productApi.getCount(name, barcode, clientName);
-
         Set<Integer> clientIds = new HashSet<>();
         for (Product p : products) {
             if (p.getClientId() != null) clientIds.add(p.getClientId());
@@ -78,16 +58,15 @@ public class ProductFlow {
             Map<Integer, String> map = new HashMap<>();
             for (Client c : clients) {
                 if (c.getId() != null && c.getName() != null) {
-                    map.putIfAbsent(c.getId(), c.getName());
+                    map.put(c.getId(), c.getName());
                 }
             }
             clientNameById = map;
         }
-
         Map<String, Object> result = new HashMap<>();
         result.put("products", products);
         result.put("total", total);
-        result.put("clientNameById", clientNameById);
+        result.put("clientNameById", clientNameById);//todo do this in ui, ui should handle this
         return result;
     }
 }

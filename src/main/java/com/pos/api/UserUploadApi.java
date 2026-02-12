@@ -7,14 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
 import static com.pos.model.constants.ErrorMessages.*;
 
 @Component
-@Transactional(rollbackFor = ApiException.class)
-public class UserApi {
+@Transactional(rollbackFor = Exception.class)
+public class UserUploadApi {
 
     @Autowired
     private UserDao userDao;
@@ -23,19 +24,15 @@ public class UserApi {
 
     public void bulkCreateOrUpdate(List<User> incomingUsers) throws ApiException {
 
-        if (incomingUsers == null || incomingUsers.isEmpty()) {
+        if (CollectionUtils.isEmpty(incomingUsers)) {
             throw new ApiException(USER_BULK_EMPTY.value());
         }
-
         for (User incoming : incomingUsers) {
             String email = incoming.getEmail();
-
             if (email == null || email.isBlank()) {
                 throw new ApiException(INVALID_EMAIL.value() + ": " + email);
             }
-
             User existing = userDao.findByEmail(email).orElse(null);
-
             if (existing == null) {
                 incoming.setPasswordHash(encoder.encode(incoming.getPasswordHash()));
                 userDao.insert(incoming);

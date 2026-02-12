@@ -13,7 +13,7 @@ import static com.pos.model.constants.ErrorMessages.*;
 import static com.pos.utils.AuthConversion.convertSignupToUser;
 
 @Component
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class AuthApi {
 
     @Autowired
@@ -26,7 +26,6 @@ public class AuthApi {
         if (userDao.findByEmail(email).isPresent()) {
             throw new ApiException(EMAIL_ALREADY_REGISTERED.value() + ": " + email);
         }
-
         String passwordHash = encoder.encode(password);
         User user = convertSignupToUser(email, passwordHash, UserRole.OPERATOR);
         userDao.insert(user);
@@ -36,13 +35,10 @@ public class AuthApi {
     @Transactional(readOnly = true)
     public User validateLogin(String email, String password) throws ApiException {
 
-        User user = userDao.findByEmail(email)
-                .orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + email));
-
+        User user = userDao.findByEmail(email).orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + email));
         if (!encoder.matches(password, user.getPasswordHash())) {
             throw new ApiException(INVALID_CREDENTIALS.value());
         }
-
         return user;
     }
 
@@ -55,14 +51,11 @@ public class AuthApi {
         return user;
     }
 
-    public void changePassword(Integer userId, String currentPassword, String newPassword)
-            throws ApiException {
-
+    public void changePassword(Integer userId, String currentPassword, String newPassword) throws ApiException {
         User user = userDao.selectById(userId);
         if (user == null) {
             throw new ApiException(USER_NOT_FOUND.value() + ": " + userId);
         }
-
         if (!encoder.matches(currentPassword, user.getPasswordHash())) {
             throw new ApiException(CURRENT_PASSWORD_INCORRECT.value());
         }

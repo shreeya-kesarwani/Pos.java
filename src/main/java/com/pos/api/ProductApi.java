@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class ProductApi {
 
     @Autowired
@@ -83,6 +83,13 @@ public class ProductApi {
         return product;
     }
 
+    @Transactional(readOnly = true)
+    public List<Integer> findProductIdsByBarcodeOrName(String barcode, String productName) {
+        List<Integer> ids = productDao.findProductIdsByBarcodeOrName(barcode, productName);
+        System.out.println("Api" + ids);
+        return ids;
+    }
+
     public void add(Product product) throws ApiException {
         if (getByBarcode(product.getBarcode()) != null) {
             throw new ApiException(PRODUCT_BARCODE_ALREADY_EXISTS.value() + ": " + product.getBarcode());
@@ -90,15 +97,8 @@ public class ProductApi {
         productDao.insert(product);
     }
 
-    public void addBulk(
-            List<Product> products,
-            List<String> clientNames,
-            Map<String, Integer> clientIdByName
-    ) throws ApiException {
-
+    public void addBulk(List<Product> products) throws ApiException {
         if (CollectionUtils.isEmpty(products)) return;
-
-        addClientIdToProducts(products, clientNames, clientIdByName);
 
         Set<String> barcodes = products.stream()
                 .map(Product::getBarcode)
@@ -107,9 +107,7 @@ public class ProductApi {
         List<Product> existing = getByBarcodes(new ArrayList<>(barcodes));
         if (!existing.isEmpty()) {
             throw new ApiException(
-                    SOME_BARCODES_ALREADY_EXIST.value() +
-                            ": " +
-                            existing.stream().map(Product::getBarcode).toList()
+                    SOME_BARCODES_ALREADY_EXIST.value() + ": " + existing.stream().map(Product::getBarcode).toList()
             );
         }
 
@@ -120,7 +118,7 @@ public class ProductApi {
 
     public void update(String barcode, Product product) throws ApiException {
         Product existing = getCheckByBarcode(barcode);
-
+        //todo - idempotency
         if (!product.getBarcode().equals(existing.getBarcode())) {
             Product other = getByBarcode(product.getBarcode());
             if (other != null && !other.getId().equals(existing.getId())) {
@@ -128,7 +126,6 @@ public class ProductApi {
             }
             existing.setBarcode(product.getBarcode());
         }
-
         existing.setName(product.getName());
         existing.setMrp(product.getMrp());
         existing.setImageUrl(product.getImageUrl());
@@ -140,37 +137,18 @@ public class ProductApi {
         return productDao.search(name, barcode, clientName, page, size);
     }
 
+    public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
+        Product product = getCheck(productId);
+        if (sellingPrice > product.getMrp()) {
+            throw new ApiException(
+                    SELLING_PRICE_EXCEEDS_MRP.value() + " | productId=" + productId + ", mrp=" + product.getMrp() + ", sellingPrice=" + sellingPrice
+            );
+        }
+    }
+
     @Transactional(readOnly = true)
     public Long getCount(String name, String barcode, String clientName) {
         return productDao.getCount(name, barcode, clientName);
     }
 
-    public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
-        Product product = getCheck(productId);
-        if (sellingPrice > product.getMrp()) {
-            throw new ApiException(
-                    SELLING_PRICE_EXCEEDS_MRP.value() +
-                            " | productId=" + productId +
-                            ", mrp=" + product.getMrp() +
-                            ", sellingPrice=" + sellingPrice
-            );
-        }
-    }
-
-    private void addClientIdToProducts(
-            List<Product> products,
-            List<String> clientNames,
-            Map<String, Integer> clientIdByName
-    ) throws ApiException {
-
-        for (int i = 0; i < products.size(); i++) {
-            Integer clientId = clientIdByName.get(clientNames.get(i));
-            if (clientId == null) {
-                throw new ApiException(
-                        INVALID_CLIENT_NAME_BULK_UPLOAD.value() + ": " + clientNames.get(i)
-                );
-            }
-            products.get(i).setClientId(clientId);
-        }
-    }
 }

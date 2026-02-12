@@ -1,11 +1,10 @@
 package com.pos.dto;
 
+import com.pos.api.SalesReportApi;
 import com.pos.exception.ApiException;
-import com.pos.flow.SalesReportFlow;
 import com.pos.model.data.SalesReportData;
 import com.pos.model.form.SalesReportForm;
 import com.pos.utils.SalesReportConversion;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -17,21 +16,19 @@ import static com.pos.model.constants.ErrorMessages.START_DATE_AFTER_END_DATE;
 @Component
 public class SalesReportDto extends AbstractDto {
 
-    @Autowired SalesReportFlow salesReportFlow;
+    @Autowired
+    SalesReportApi salesReportApi;
 
     public List<SalesReportData> getCheck(SalesReportForm form) throws ApiException {
         validate(form);
-        List<SalesReportData> rows = salesReportFlow.getCheckSalesReport(
-                form.getStartDate(),
-                form.getEndDate(),
-                form.getClientId()
-        );
-
+        normalize(form);
+        List<SalesReportData> rows = salesReportApi.getCheckSalesReport(form.getStartDate(), form.getEndDate(), form.getClientId());
         return SalesReportConversion.toData(rows);
     }
 
-    private void validate(@Valid SalesReportForm form) throws ApiException {
+    private void validate(SalesReportForm form) throws ApiException {
         normalize(form);
+        validateForm(form);
 
         LocalDate start = form.getStartDate();
         LocalDate end = form.getEndDate();

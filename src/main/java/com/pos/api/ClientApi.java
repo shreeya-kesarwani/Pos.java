@@ -13,7 +13,7 @@ import java.util.List;
 import static com.pos.model.constants.ErrorMessages.*;
 
 @Service
-@Transactional(rollbackFor = ApiException.class)
+@Transactional(rollbackFor = Exception.class)
 public class ClientApi {
 
     @Autowired
@@ -35,8 +35,8 @@ public class ClientApi {
 
     @Transactional(readOnly = true)
     public Client getByName(String name) {
-        List<Client> results = clientDao.searchByParams(null, name, null, 0, 1);
-        return results.isEmpty() ? null : results.get(0);
+        Client client = clientDao.selectByName(name);
+        return client;
     }
 
     @Transactional(readOnly = true)
@@ -58,16 +58,19 @@ public class ClientApi {
         clientDao.insert(clientPojo);
     }
 
-    public void update(String name, Client client) throws ApiException {
+    public void update(Integer clientId, Client client) throws ApiException {
 
-        Client existing = getCheckByName(name);
+        Client existing = getCheck(clientId);
+
         Client other = getByName(client.getName());
         if (other != null && !other.getId().equals(existing.getId())) {
             throw new ApiException(CLIENT_NAME_TAKEN.value() + ": " + client.getName());
         }
+
         existing.setName(client.getName());
         existing.setEmail(client.getEmail());
     }
+
 
     @Transactional(readOnly = true)
     public List<Client> search(Integer id, String name, String email, int page, int size) {
