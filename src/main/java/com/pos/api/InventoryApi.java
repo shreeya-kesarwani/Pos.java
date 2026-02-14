@@ -2,12 +2,15 @@ package com.pos.api;
 
 import com.pos.dao.InventoryDao;
 import com.pos.exception.ApiException;
+import com.pos.model.form.InventoryForm;
 import com.pos.pojo.Inventory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Objects;
 
 import static com.pos.model.constants.ErrorMessages.*;
 
@@ -48,6 +51,7 @@ public class InventoryApi {
 
     @Transactional(readOnly = true)
     public List<Inventory> findByProductIds(List<Integer> productIds, int page, int size) {
+        if (CollectionUtils.isEmpty(productIds)) return List.of();
         return inventoryDao.findByProductIds(productIds, page, size);
     }
 
@@ -70,17 +74,34 @@ public class InventoryApi {
         Inventory inventory = getCheckByProductId(productId);
         if (inventory.getQuantity() < quantity) {
             throw new ApiException(
-                    INSUFFICIENT_INVENTORY.value() +
-                            " | productId=" + productId +
-                            ", available=" + inventory.getQuantity() +
-                            ", requested=" + quantity
+                    INSUFFICIENT_INVENTORY.value() + " | productId=" + productId + ", available=" + inventory.getQuantity() + ", requested=" + quantity
             );
         }
         inventory.setQuantity(inventory.getQuantity() - quantity);
     }
 
     public Long getCountByProductIds(List<Integer> productIds) {
+        if (CollectionUtils.isEmpty(productIds)) return 0L;
         return inventoryDao.getCountByProductIds(productIds);
+    }
+
+    public static List<String> extractBarcodes(List<InventoryForm> forms) {
+        if (forms == null || forms.isEmpty()) return List.of();
+        return forms.stream()
+                .map(InventoryForm::getBarcode)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toList();
+    }
+
+    public static List<Integer> extractDistinctProductIds(List<Inventory> inventories) {
+        if (inventories == null || inventories.isEmpty()) return List.of();
+        return inventories.stream()
+                .map(Inventory::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 
 }

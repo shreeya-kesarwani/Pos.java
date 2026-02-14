@@ -23,11 +23,25 @@ public class OrderApi {
     @Autowired private OrderDao orderDao;
     @Autowired private OrderItemDao orderItemDao;
 
-    public Order create() {
+    public Integer create(List<OrderItem> items) throws ApiException {
+
+        if (CollectionUtils.isEmpty(items)) {
+            throw new ApiException(NO_ORDER_ITEMS_FOUND.value());
+        }
+
+        for (OrderItem item : items) {
+            validateOrderItem(item.getProductId(), item.getQuantity(), item.getSellingPrice());
+        }
+
         Order order = new Order();
         order.setStatus(OrderStatus.CREATED);
         orderDao.insert(order);
-        return order;
+
+        for (OrderItem item : items) {
+            item.setOrderId(order.getId());
+            orderItemDao.insert(item);
+        }
+        return order.getId();
     }
 
     @Transactional(readOnly = true)
@@ -53,27 +67,6 @@ public class OrderApi {
         return orderDao.search(id, start, end, status, page, size);
     }
 
-    public void addItem(OrderItem item) {
-        orderItemDao.insert(item);
-    }
-
-    public void addItem(Integer orderId, Integer productId, Integer quantity, Double sellingPrice) throws ApiException {
-
-        if (quantity == null || quantity <= 0) {
-            throw new ApiException(QUANTITY_MUST_BE_POSITIVE.value());
-        }
-        if (sellingPrice == null || sellingPrice < 0) {
-            throw new ApiException(SELLING_PRICE_CANNOT_BE_NEGATIVE.value());
-        }
-
-        OrderItem item = new OrderItem();
-        item.setOrderId(orderId);
-        item.setProductId(productId);
-        item.setQuantity(quantity);
-        item.setSellingPrice(sellingPrice);
-        orderItemDao.insert(item);
-    }
-
     @Transactional(readOnly = true)
     public List<OrderItem> getItemsByOrderId(Integer orderId) {
         return orderItemDao.selectByOrderId(orderId);
@@ -91,5 +84,20 @@ public class OrderApi {
     @Transactional(readOnly = true)
     public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
         return orderDao.getCount(id, start, end, status);
+    }
+
+    private void validateOrderItem(Integer productId, Integer quantity, Double sellingPrice) throws ApiException {
+
+        if (productId == null) {
+            throw new ApiException(PRODUCT_NOT_FOUND.value());
+        }
+
+        if (quantity == null || quantity <= 0) {
+            throw new ApiException(QUANTITY_MUST_BE_POSITIVE.value());
+        }
+
+        if (sellingPrice == null || sellingPrice < 0) {
+            throw new ApiException(SELLING_PRICE_CANNOT_BE_NEGATIVE.value());
+        }
     }
 }

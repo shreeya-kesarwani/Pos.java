@@ -11,42 +11,40 @@ public class ProductDao extends BaseDao {
 
     private static final String BASE_QUERY = """
         FROM Product p
-        JOIN Client c ON p.clientId = c.id
-        WHERE (:name IS NULL OR p.name LIKE :name)
+        WHERE (:name IS NULL OR LOWER(p.name) LIKE :name)
           AND (:barcode IS NULL OR p.barcode = :barcode)
-          AND (:cName IS NULL OR c.name = :cName)
+          AND (:clientId IS NULL OR p.clientId = :clientId)
     """;
 
     private static final String SEARCH_QUERY = "SELECT p " + BASE_QUERY + " ORDER BY p.id";
     private static final String COUNT_QUERY  = "SELECT COUNT(p) " + BASE_QUERY;
-
     private static final String SELECT_BY_BARCODES = "SELECT p FROM Product p WHERE p.barcode IN :barcodes";
     private static final String SELECT_BY_IDS = "SELECT p FROM Product p WHERE p.id IN :ids";
-
     private static final String FETCH_IDS = """
         SELECT p.id
         FROM Product p
         WHERE (:barcode IS NULL OR p.barcode = :barcode)
-          AND (:name IS NULL OR p.name LIKE :name)
+          AND (:name IS NULL OR LOWER(p.name) LIKE :name)
         ORDER BY p.id
     """;
 
-    public List<Product> search(String name, String barcode, String clientName, int page, int size) {
+    public List<Product> search(String name, String barcode, Integer clientId, int page, int size) {
         return createQuery(SEARCH_QUERY, Product.class)
                 .setParameter("name", like(name))
                 .setParameter("barcode", barcode)
-                .setParameter("cName", clientName)
+                .setParameter("clientId", clientId)
                 .setFirstResult(page * size)
                 .setMaxResults(size)
                 .getResultList();
     }
 
-    public Long getCount(String name, String barcode, String clientName) {
-        return createQuery(COUNT_QUERY, Long.class)
+    public long getCount(String name, String barcode, Integer clientId) {
+        Long count = createQuery(COUNT_QUERY, Long.class)
                 .setParameter("name", like(name))
                 .setParameter("barcode", barcode)
-                .setParameter("cName", clientName)
+                .setParameter("clientId", clientId)
                 .getSingleResult();
+        return count == null ? 0L : count;
     }
 
     public List<Integer> findProductIdsByBarcodeOrName(String barcode, String productName) {

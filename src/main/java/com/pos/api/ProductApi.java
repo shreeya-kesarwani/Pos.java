@@ -8,7 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.util.*;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.pos.model.constants.ErrorMessages.*;
@@ -53,18 +56,13 @@ public class ProductApi {
         }
 
         List<Product> found = productDao.selectByBarcodes(barcodes);
-        Set<String> foundSet = found.stream()
-                .map(Product::getBarcode)
-                .collect(Collectors.toSet());
+        Set<String> foundSet = toBarcodeSet(found);
 
-        List<String> missing = barcodes.stream()
-                .distinct()
-                .filter(b -> !foundSet.contains(b))
-                .toList();
-
+        List<String> missing = findMissingBarcodes(barcodes, foundSet);
         if (!missing.isEmpty()) {
             throw new ApiException(PRODUCTS_NOT_FOUND_FOR_BARCODES.value() + ": " + missing);
         }
+
         return found;
     }
 
@@ -85,9 +83,7 @@ public class ProductApi {
 
     @Transactional(readOnly = true)
     public List<Integer> findProductIdsByBarcodeOrName(String barcode, String productName) {
-        List<Integer> ids = productDao.findProductIdsByBarcodeOrName(barcode, productName);
-        System.out.println("Api" + ids);
-        return ids;
+        return productDao.findProductIdsByBarcodeOrName(barcode, productName);
     }
 
     public void add(Product product) throws ApiException {
@@ -100,41 +96,31 @@ public class ProductApi {
     public void addBulk(List<Product> products) throws ApiException {
         if (CollectionUtils.isEmpty(products)) return;
 
-        Set<String> barcodes = products.stream()
-                .map(Product::getBarcode)
-                .collect(Collectors.toSet());
+        List<String> barcodes = extractBarcodes(products);
+        List<Product> existingProducts = getByBarcodes(barcodes);
 
-        List<Product> existing = getByBarcodes(new ArrayList<>(barcodes));
-        if (!existing.isEmpty()) {
+        if (!existingProducts.isEmpty()) {
             throw new ApiException(
-                    SOME_BARCODES_ALREADY_EXIST.value() + ": " + existing.stream().map(Product::getBarcode).toList()
+                    SOME_BARCODES_ALREADY_EXIST.value() + ": " + extractBarcodes(existingProducts)
             );
         }
-
         for (Product product : products) {
             productDao.insert(product);
         }
     }
 
-    public void update(String barcode, Product product) throws ApiException {
-        Product existing = getCheckByBarcode(barcode);
-        //todo - idempotency
-        if (!product.getBarcode().equals(existing.getBarcode())) {
-            Product other = getByBarcode(product.getBarcode());
-            if (other != null && !other.getId().equals(existing.getId())) {
-                throw new ApiException(PRODUCT_BARCODE_ALREADY_EXISTS.value() + ": " + product.getBarcode());
-            }
-            existing.setBarcode(product.getBarcode());
+    public void update(Integer productId, Product product) throws ApiException {
+        Product existing = getCheck(productId);
+        if (product.getBarcode() != null && !product.getBarcode().equals(existing.getBarcode())) {
+            throw new ApiException("Barcode cannot be modified");
+        }
+        if (product.getClientId() != null && !product.getClientId().equals(existing.getClientId())) {
+            throw new ApiException("Client cannot be modified");
         }
         existing.setName(product.getName());
         existing.setMrp(product.getMrp());
         existing.setImageUrl(product.getImageUrl());
         existing.setClientId(product.getClientId());
-    }
-
-    @Transactional(readOnly = true)
-    public List<Product> search(String name, String barcode, String clientName, int page, int size) {
-        return productDao.search(name, barcode, clientName, page, size);
     }
 
     public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
@@ -147,8 +133,56 @@ public class ProductApi {
     }
 
     @Transactional(readOnly = true)
-    public Long getCount(String name, String barcode, String clientName) {
-        return productDao.getCount(name, barcode, clientName);
+    public List<Product> search(String name, String barcode, Integer clientId, int page, int pageSize) {
+        return productDao.search(name, barcode, clientId, page, pageSize);
     }
+
+    @Transactional(readOnly = true)
+    public long getCount(String name, String barcode, Integer clientId) {
+        return productDao.getCount(name, barcode, clientId);
+    }
+
+    // -------------------- Static helpers --------------------
+
+    public static List<String> extractBarcodes(List<Product> products) {
+        if (products == null || products.isEmpty()) return List.of();
+        return products.stream()
+                .map(Product::getBarcode)
+                .toList();
+    }
+
+    public static Set<String> toBarcodeSet(List<Product> products) {
+        if (products == null || products.isEmpty()) return Set.of();
+        return products.stream()
+                .map(Product::getBarcode)
+                .collect(Collectors.toSet());
+    }
+
+    public static List<String> findMissingBarcodes(List<String> requested, Set<String> foundSet) {
+        if (requested == null || requested.isEmpty()) return List.of();
+
+        final Set<String> safeFoundSet = (foundSet == null) ? Set.of() : foundSet;
+
+        return requested.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .distinct()
+                .filter(b -> !safeFoundSet.contains(b))
+                .toList();
+    }
+
+    public static Map<String, Integer> toProductIdByBarcode(List<Product> products) {
+        if (products == null || products.isEmpty()) return Map.of();
+
+        return products.stream()
+                .filter(p -> p.getBarcode() != null && p.getId() != null)
+                .collect(Collectors.toMap(
+                        Product::getBarcode,
+                        Product::getId,
+                        (a, b) -> a
+                ));
+    }
+
 
 }

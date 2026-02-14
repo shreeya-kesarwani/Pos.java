@@ -13,15 +13,17 @@ public class ProductTsvParser {
 
     private ProductTsvParser() {}
 
-    public static ProductTsvParseResult parse(MultipartFile file) throws ApiException, IOException {
-        List<String[]> rows = TsvParser.read(file.getInputStream());
+    // ✅ NEW: accept clientId and set it into every parsed form
+    public static ProductTsvParseResult parse(MultipartFile file, Integer clientId) throws ApiException, IOException {
+        if (clientId == null) {
+            throw new ApiException("clientId is required for bulk upload");
+        }
 
+        List<String[]> rows = TsvParser.read(file.getInputStream());
         if (rows == null || rows.isEmpty()) {
             throw new ApiException("Empty TSV file");
         }
 
-        // Header: allow 3 cols (barcode,name,mrp) OR 4 cols (barcode,name,mrp,imageurl)
-        // clientname removed completely
         try {
             validateFlexibleHeader(rows.get(0));
         } catch (ApiException headerEx) {
@@ -63,11 +65,11 @@ public class ProductTsvParser {
                     throw new ApiException("Invalid mrp");
                 }
 
-                // imageurl OPTIONAL:
-                // - header may have 3 or 4 cols
-                // - row may have missing trailing column
                 String img = (r != null && r.length > 3) ? TsvParser.s(r, 3) : "";
                 form.setImageUrl(img.isEmpty() ? null : img);
+
+                // ✅ set same clientId for all rows
+                form.setClientId(clientId);
 
                 validateShape(form);
                 normalizeShape(form);
@@ -109,16 +111,12 @@ public class ProductTsvParser {
             throw new ApiException("Missing header");
         }
 
-        // normalize header cells (trim + lowercase)
         List<String> h = new ArrayList<>();
         for (String cell : headerRow) {
             String v = (cell == null) ? "" : cell.trim().toLowerCase();
             if (!v.isEmpty()) h.add(v);
         }
 
-        // IMPORTANT:
-        // - If your TsvParser.read keeps empty trailing columns, this still works.
-        // - If it does not, we also accept 3-col header.
         if (h.size() == 3) {
             if (!h.get(0).equals("barcode") || !h.get(1).equals("name") || !h.get(2).equals("mrp")) {
                 throw new ApiException("Expected header: barcode, name, mrp (optional imageurl)");
@@ -141,6 +139,7 @@ public class ProductTsvParser {
         if (form.getName() == null || form.getName().isBlank()) throw new ApiException("name is required");
         if (form.getMrp() == null) throw new ApiException("mrp is required");
         if (form.getMrp() < 0) throw new ApiException("mrp cannot be negative");
+        if (form.getClientId() == null) throw new ApiException("clientId is required");
         // imageUrl optional
     }
 

@@ -51,4 +51,20 @@ public class InventoryConversion {
                 .filter(Objects::nonNull)
                 .toList();
     }
+
+    public static List<Inventory> convertFormsToPojos(
+            List<InventoryForm> forms,
+            Map<String, Integer> productIdByBarcode
+    ) {
+        if (forms == null || forms.isEmpty()) return List.of();
+
+        return forms.stream()
+                .map(f -> {
+                    Inventory inv = convertFormToPojo(f);
+                    inv.setProductId(productIdByBarcode.get(f.getBarcode()));
+                    return inv;
+                })
+                .toList();
+    }
+
 }

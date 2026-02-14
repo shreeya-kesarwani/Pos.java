@@ -20,12 +20,16 @@ public class ProductController {
     @Autowired
     private ProductDto productDto;
 
-    @PostMapping
+    @RequestMapping(method = RequestMethod.POST)
     public void add(@Valid @RequestBody ProductForm form) throws ApiException {
         productDto.add(form);
     }
 
-    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @RequestMapping(
+            value = "/upload",
+            method = RequestMethod.POST,
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public void upload(
             @RequestParam("clientId") Integer clientId,
             @RequestParam("file") MultipartFile file
@@ -33,22 +37,22 @@ public class ProductController {
         productDto.addBulk(clientId, file);
     }
 
-    @GetMapping
+    @RequestMapping(method = RequestMethod.GET)
     public PaginatedResponse<ProductData> search(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String barcode,
-            @RequestParam(required = false) String clientName,
+            @RequestParam(required = false) Integer clientId,
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) throws ApiException {
-        return productDto.getProducts(name, barcode, clientName, page, size);
+        return productDto.getProducts(name, barcode, clientId, page, size);
     }
 
-    @PutMapping("/{barcode}")
+    @RequestMapping(value = "/{productId}", method = RequestMethod.PUT)
     public void update(
-            @PathVariable String barcode,
-            @Valid @RequestBody ProductForm productForm
+            @PathVariable Integer productId,
+            @Valid @RequestBody ProductForm form
     ) throws ApiException {
-        productDto.update(barcode, productForm);
+        productDto.update(productId, form);
     }
 }

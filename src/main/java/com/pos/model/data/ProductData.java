@@ -10,6 +10,6 @@ public class ProductData {
     private String barcode;
     private String name;
     private Double mrp;
-    private String clientName;
+    private Integer clientId;
     private String imageUrl;
 }

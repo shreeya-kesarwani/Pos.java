@@ -26,35 +26,20 @@ public class ProductDto extends AbstractDto {
     public void add(ProductForm form) throws ApiException {
         normalize(form);
         validateForm(form);
-
-        String clientName = normalize(form.getClientName());
-        if (clientName == null) {
-            throw new ApiException("clientName is required");
-        }
-
         Product productPojo = ProductConversion.toPojo(form);
-        productFlow.add(productPojo, clientName);
+        productFlow.add(productPojo);
     }
 
-    public void update(String barcode, ProductForm form) throws ApiException {
+    public void update(Integer productId, ProductForm form) throws ApiException {
         normalize(form);
         validateForm(form);
-
-        String clientName = normalize(form.getClientName());
-        if (clientName == null) {
-            throw new ApiException("clientName is required");
-        }
-
-        Product productPojo = ProductConversion.toPojo(form);
-        productFlow.update(barcode, productPojo, clientName);
+        Product product = ProductConversion.toPojo(form);
+        productApi.update(productId, product);
     }
 
     public void addBulk(Integer clientId, MultipartFile file) throws ApiException, IOException {
-        if (clientId == null) {
-            throw new ApiException("clientId is required for bulk upload");
-        }
 
-        ProductTsvParser.ProductTsvParseResult parsed = ProductTsvParser.parse(file);
+        ProductTsvParser.ProductTsvParseResult parsed = ProductTsvParser.parse(file, clientId);
         List<ProductForm> forms = parsed.forms();
         if (CollectionUtils.isEmpty(forms)) return;
 
@@ -62,33 +47,23 @@ public class ProductDto extends AbstractDto {
         for (ProductForm f : forms) {
             normalize(f);
             validateForm(f);
-            products.add(ProductConversion.toPojo(f));
+            Product product = ProductConversion.toPojo(f);
+            products.add(product);
         }
-
         productFlow.addBulk(products, clientId);
     }
 
-    public PaginatedResponse<ProductData> getProducts(String name, String barcode, String clientName, Integer pageNumber, Integer pageSize) throws ApiException {
+    public PaginatedResponse<ProductData> getProducts(String name, String barcode, Integer clientId, Integer pageNumber, Integer pageSize) throws ApiException {
 
-        String normalizedName = normalize(name);
-        String normalizedBarcode = normalize(barcode);
-        String normalizedClientName = normalize(clientName);
-//todo make custom class for this
-        Map<String, Object> searchedProducts = productFlow.searchProducts(
-                normalizedName, normalizedBarcode, normalizedClientName,
-                pageNumber, pageSize
-        );
+        name = normalize(name);
+        barcode = normalize(barcode);
 
-        List<Product> products = (List<Product>) searchedProducts.get("products");
-        Object totalObj = searchedProducts.get("total");
-        long total = (totalObj instanceof Long) ? (Long) totalObj : ((Number) totalObj).longValue();
+        List<Product> products = productApi.search(name, barcode, clientId, pageNumber, pageSize);
+        long total = productApi.getCount(name, barcode, clientId);
 
-        Map<Integer, String> clientNameById = (Map<Integer, String>) searchedProducts.get("clientNameById");
-
-        List<ProductData> dataList = new ArrayList<>();
+        List<ProductData> dataList = new ArrayList<>(products.size());
         for (Product p : products) {
-            String cName = clientNameById.getOrDefault(p.getClientId(), "Unknown Client");
-            dataList.add(ProductConversion.toData(p, cName));
+            dataList.add(ProductConversion.toData(p));
         }
 
         return PaginatedResponse.of(dataList, total, pageNumber);

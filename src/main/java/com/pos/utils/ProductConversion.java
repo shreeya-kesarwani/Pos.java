@@ -13,18 +13,19 @@ public class ProductConversion {
         p.setName(form.getName());
         p.setBarcode(form.getBarcode());
         p.setMrp(form.getMrp());
+        p.setClientId(form.getClientId());
         p.setImageUrl(normalizeBlankToNull(form.getImageUrl()));
         return p;
     }
 
-    public static ProductData toData(Product p, String clientName) {
+    public static ProductData toData(Product p) {
         ProductData d = new ProductData();
         d.setId(p.getId());
         d.setName(p.getName());
         d.setBarcode(p.getBarcode());
         d.setMrp(p.getMrp());
-        d.setImageUrl(p.getImageUrl()); // include this if your ProductData has it
-        d.setClientName(clientName);
+        d.setImageUrl(p.getImageUrl());
+        d.setClientId(p.getClientId());
         return d;
     }
 

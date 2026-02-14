@@ -4,7 +4,6 @@ import com.pos.dto.InventoryDto;
 import com.pos.exception.ApiException;
 import com.pos.model.data.InventoryData;
 import com.pos.model.data.PaginatedResponse;
-import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
