@@ -13,14 +13,23 @@ public class OrderDao extends BaseDao {
     private static final String ORDER_FILTERS = """
         FROM Order o
         WHERE (:id IS NULL OR o.id = :id)
-        AND (:status IS NULL OR o.status = :status)
-        AND ((:start IS NULL AND :end IS NULL)
-        OR o.createdAt BETWEEN :start AND :end)""";
+          AND (:status IS NULL OR o.status = :status)
+          AND (:start IS NULL OR o.updatedAt >= :start)
+          AND (:end IS NULL OR o.updatedAt <= :end)
+        """;
 
-    private static final String ORDER_SEARCH = "SELECT o " + ORDER_FILTERS + " ORDER BY o.createdAt DESC";
-    private static final String ORDER_COUNT  = "SELECT COUNT(o) " + ORDER_FILTERS;
+    private static final String ORDER_SEARCH =
+            "SELECT o " + ORDER_FILTERS + " ORDER BY o.updatedAt DESC";
 
-    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
+    private static final String ORDER_COUNT =
+            "SELECT COUNT(o) " + ORDER_FILTERS;
+
+    public List<Order> search(Integer id,
+                              ZonedDateTime start,
+                              ZonedDateTime end,
+                              OrderStatus status,
+                              int page,
+                              int size) {
 
         return createQuery(ORDER_SEARCH, Order.class)
                 .setParameter("id", id)
@@ -32,7 +41,10 @@ public class OrderDao extends BaseDao {
                 .getResultList();
     }
 
-    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
+    public Long getCount(Integer id,
+                         ZonedDateTime start,
+                         ZonedDateTime end,
+                         OrderStatus status) {
 
         return createQuery(ORDER_COUNT, Long.class)
                 .setParameter("id", id)

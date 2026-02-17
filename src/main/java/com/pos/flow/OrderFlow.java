@@ -36,11 +36,4 @@ public class OrderFlow {
         }
         return orderApi.create(items);
     }
-
-
-    public List<OrderItem> getOrderItems(Integer orderId) throws ApiException {
-        orderApi.getCheck(orderId);
-        List<OrderItem> items = orderApi.getItemsByOrderId(orderId);
-        return (items == null) ? List.of() : items;
-    }
 }

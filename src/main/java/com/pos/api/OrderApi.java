@@ -69,6 +69,7 @@ public class OrderApi {
 
     @Transactional(readOnly = true)
     public List<OrderItem> getItemsByOrderId(Integer orderId) {
+        getCheck(orderId);
         return orderItemDao.selectByOrderId(orderId);
     }
 
@@ -84,6 +85,11 @@ public class OrderApi {
     @Transactional(readOnly = true)
     public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
         return orderDao.getCount(id, start, end, status);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderItem> getItemsByOrderIds(List<Integer> orderIds) {
+        return orderItemDao.selectByOrderIds(orderIds);
     }
 
     private void validateOrderItem(Integer productId, Integer quantity, Double sellingPrice) throws ApiException {

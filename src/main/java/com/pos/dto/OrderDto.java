@@ -44,21 +44,36 @@ public class OrderDto extends AbstractDto {
     public PaginatedResponse<OrderData> search(Integer id, ZonedDateTime start, ZonedDateTime end, String status, Integer pageNumber, Integer pageSize) throws ApiException {
 
         OrderStatus orderStatus = validateStatus(status);
-
         List<Order> orders = orderApi.search(id, start, end, orderStatus, pageNumber, pageSize);
         long totalCount = orderApi.getCount(id, start, end, orderStatus);
 
-        List<OrderData> data = new ArrayList<>();
-        for (Order order : orders) {
-            List<OrderItem> items = orderFlow.getOrderItems(order.getId());
-            data.add(OrderConversion.toOrderDataWithTotal(order, items));
+        if (orders == null || orders.isEmpty()) {
+            return PaginatedResponse.of(List.of(), totalCount, pageNumber);
         }
+
+        List<Integer> orderIds = orders.stream()
+                .map(Order::getId)
+                .filter(Objects::nonNull)
+                .toList();
+
+        List<OrderItem> allItems = orderApi.getItemsByOrderIds(orderIds);
+        Map<Integer, List<OrderItem>> itemsByOrderId = allItems.stream()
+                .filter(oi -> oi.getOrderId() != null)
+                .collect(Collectors.groupingBy(OrderItem::getOrderId));
+
+        List<OrderData> data = orders.stream()
+                .map(o -> {
+                    List<OrderItem> items = itemsByOrderId.getOrDefault(o.getId(), List.of());
+                    return OrderConversion.toOrderDataWithTotal(o, items);
+                })
+                .toList();
 
         return PaginatedResponse.of(data, totalCount, pageNumber);
     }
 
+
     public List<OrderItemData> getItems(Integer orderId) throws ApiException {
-        List<OrderItem> items = orderFlow.getOrderItems(orderId);
+        List<OrderItem> items = orderApi.getItemsByOrderId(orderId);
         if (items.isEmpty()) return List.of();
 
         Map<Integer, Product> productById = getProductMapFromItems(items);
@@ -66,7 +81,7 @@ public class OrderDto extends AbstractDto {
     }
 
     public InvoiceData generateInvoice(Integer orderId) throws ApiException {
-        List<OrderItem> items = orderFlow.getOrderItems(orderId);
+        List<OrderItem> items = orderApi.getItemsByOrderId(orderId);
         if (items.isEmpty()) {
             throw new ApiException(CANNOT_INVOICE_EMPTY_ORDER.value() + ": orderId=" + orderId);
         }
@@ -121,8 +136,9 @@ public class OrderDto extends AbstractDto {
 
         for (OrderItemForm itemForm : form.getItems()) {
             normalize(itemForm);
+
             String barcode = normalize(itemForm.getBarcode());
-            if (barcode == null) {
+            if (barcode == null || barcode.isBlank()) {
                 throw new ApiException("Barcode cannot be empty");
             }
             barcodes.add(barcode);
@@ -130,11 +146,15 @@ public class OrderDto extends AbstractDto {
 
         List<Product> products = productApi.getCheckByBarcodes(barcodes);
         Map<String, Product> productByBarcode = products.stream()
+                .filter(p -> p.getBarcode() != null)
                 .collect(Collectors.toMap(Product::getBarcode, p -> p, (a, b) -> a));
 
         List<OrderItem> items = new ArrayList<>();
         for (OrderItemForm itemForm : form.getItems()) {
             String barcode = normalize(itemForm.getBarcode());
+            if (barcode == null || barcode.isBlank()) {
+                throw new ApiException("Barcode cannot be empty");
+            }
 
             Product product = productByBarcode.get(barcode);
             if (product == null) {

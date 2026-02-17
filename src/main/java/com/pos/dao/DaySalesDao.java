@@ -1,5 +1,6 @@
 package com.pos.dao;
 
+import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.DaySales;
 import org.springframework.stereotype.Repository;
 
@@ -17,13 +18,14 @@ public class DaySalesDao extends BaseDao {
         ORDER BY d.date
     """;
 
+    // ✅ Safer JPQL (no ON join) + ✅ enum parameter for status
     private static final String SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY = """
         SELECT COUNT(DISTINCT o.id),
                COALESCE(SUM(oi.quantity), 0),
                COALESCE(SUM(oi.quantity * oi.sellingPrice), 0)
-        FROM Order o
-        JOIN OrderItem oi ON oi.orderId = o.id
-        WHERE o.status = 'INVOICED'
+        FROM Order o, OrderItem oi
+        WHERE oi.orderId = o.id
+          AND o.status = :status
           AND o.updatedAt >= :start
           AND o.updatedAt < :end
     """;
@@ -37,6 +39,7 @@ public class DaySalesDao extends BaseDao {
 
     public Object[] selectInvoicedSalesAggregatesForDay(ZonedDateTime start, ZonedDateTime end) {
         return createQuery(SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY, Object[].class)
+                .setParameter("status", OrderStatus.INVOICED)
                 .setParameter("start", start)
                 .setParameter("end", end)
                 .getSingleResult();
