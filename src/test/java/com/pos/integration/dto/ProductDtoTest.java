@@ -8,13 +8,15 @@ import com.pos.model.data.PaginatedResponse;
 import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
 import com.pos.pojo.Product;
-import com.pos.utils.ProductConversion;
 import com.pos.utils.ProductTsvParser;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -37,7 +39,7 @@ class ProductDtoTest {
     @InjectMocks private ProductDto productDto;
 
     @Test
-    void add_shouldNormalizeValidateAndCallFlow() throws Exception {
+    void addNormalizesValidatesAndCallsFlow() throws ApiException {
         ProductForm form = new ProductForm();
         form.setName("  iPhone  ");
         form.setBarcode("  b1  ");
@@ -47,10 +49,12 @@ class ProductDtoTest {
         when(validator.validate(any(ProductForm.class))).thenReturn(Set.of());
 
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+
         productDto.add(form);
 
         verify(productFlow).add(captor.capture());
         Product sent = captor.getValue();
+
         assertEquals("iPhone", sent.getName());
         assertEquals("b1", sent.getBarcode());
         assertEquals(100.0, sent.getMrp());
@@ -58,14 +62,17 @@ class ProductDtoTest {
     }
 
     @Test
-    void add_shouldThrow_whenValidationFails() {
+    void addThrowsWhenValidationFails() {
         ProductForm form = new ProductForm();
         form.setName("x");
 
         @SuppressWarnings("unchecked")
-        ConstraintViolation<ProductForm> v = mock(ConstraintViolation.class);
-        when(v.getMessage()).thenReturn("name invalid");
-        when(validator.validate(any(ProductForm.class))).thenReturn(Set.of(v));
+        ConstraintViolation<ProductForm> violation =
+                (ConstraintViolation<ProductForm>) mock(ConstraintViolation.class);
+        when(violation.getMessage()).thenReturn("name invalid");
+
+        Set<ConstraintViolation<ProductForm>> violations = Set.of(violation);
+        when(validator.validate(any(ProductForm.class))).thenReturn(violations);
 
         ApiException ex = assertThrows(ApiException.class, () -> productDto.add(form));
         assertEquals("name invalid", ex.getMessage());
@@ -73,7 +80,7 @@ class ProductDtoTest {
     }
 
     @Test
-    void update_shouldNormalizeValidateAndCallApi() throws Exception {
+    void updateNormalizesValidatesAndCallsApi() throws ApiException {
         ProductForm form = new ProductForm();
         form.setName("  n  ");
         form.setBarcode("  b  ");
@@ -83,10 +90,12 @@ class ProductDtoTest {
         when(validator.validate(any(ProductForm.class))).thenReturn(Set.of());
 
         ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+
         productDto.update(7, form);
 
         verify(productApi).update(eq(7), captor.capture());
         Product sent = captor.getValue();
+
         assertEquals("n", sent.getName());
         assertEquals("b", sent.getBarcode());
         assertEquals(10.0, sent.getMrp());
@@ -94,7 +103,7 @@ class ProductDtoTest {
     }
 
     @Test
-    void addBulk_shouldReturn_whenParserReturnsEmpty() throws Exception {
+    void addBulkReturnsWhenParserReturnsEmpty() throws Exception {
         MultipartFile file = new MockMultipartFile(
                 "file",
                 "p.tsv",
@@ -112,11 +121,14 @@ class ProductDtoTest {
         }
     }
 
-
     @Test
-    void addBulk_shouldValidateEachRowAndCallFlow() throws Exception {
-        MultipartFile file = new MockMultipartFile("file", "p.tsv", "text/tab-separated-values",
-                "x".getBytes(StandardCharsets.UTF_8));
+    void addBulkValidatesEachRowAndCallsFlow() throws Exception {
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "p.tsv",
+                "text/tab-separated-values",
+                "x".getBytes(StandardCharsets.UTF_8)
+        );
 
         ProductForm f1 = new ProductForm();
         f1.setName("  A ");
@@ -142,15 +154,15 @@ class ProductDtoTest {
             productDto.addBulk(99, file);
 
             verify(productFlow).addBulk(captor.capture(), eq(99));
+
             List<Product> products = captor.getValue();
             assertEquals(2, products.size());
             assertEquals("A", products.get(0).getName());
         }
-
     }
 
     @Test
-    void getProducts_shouldNormalizeInputsAndReturnPaginatedResponse() throws ApiException {
+    void getProductsNormalizesInputsAndReturnsPaginatedResponse() throws ApiException {
         Product p = new Product();
         p.setId(1);
         p.setName("n");
@@ -171,5 +183,4 @@ class ProductDtoTest {
         assertEquals(1, resp.getData().size());
         assertEquals("barcode", resp.getData().get(0).getBarcode());
     }
-
 }

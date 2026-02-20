@@ -31,36 +31,41 @@ class DaySalesDtoTest {
     @InjectMocks private DaySalesDto daySalesDto;
 
     @Test
-    void get_shouldThrow_whenStartDateMissing() {
+    void getThrowsWhenStartDateMissing() {
         DaySalesForm form = new DaySalesForm();
+
         when(validator.validate(any(DaySalesForm.class))).thenReturn(Set.of());
 
         ApiException ex = assertThrows(ApiException.class, () -> daySalesDto.get(form));
         assertNotNull(ex.getMessage());
+
         verifyNoInteractions(daySalesApi);
     }
 
     @Test
-    void get_shouldCallApiAndConvert() throws Exception {
+    void getCallsApiAndConverts() throws Exception {
         DaySalesForm form = new DaySalesForm();
         form.setStartDate(ZonedDateTime.now());
+
         when(validator.validate(any(DaySalesForm.class))).thenReturn(Set.of());
 
         DaySales row = new DaySales();
         when(daySalesApi.getDaySales(eq(form.getStartDate()))).thenReturn(List.of(row));
 
         List<DaySalesData> out = daySalesDto.get(form);
+
         assertEquals(1, out.size());
         verify(daySalesApi).getDaySales(eq(form.getStartDate()));
     }
 
     @Test
-    void get_shouldThrow_whenBeanValidationFails() {
+    void getThrowsWhenBeanValidationFails() {
         DaySalesForm form = new DaySalesForm();
 
         @SuppressWarnings("unchecked")
         ConstraintViolation<DaySalesForm> v = mock(ConstraintViolation.class);
         when(v.getMessage()).thenReturn("invalid");
+
         when(validator.validate(any(DaySalesForm.class))).thenReturn(Set.of(v));
 
         ApiException ex = assertThrows(ApiException.class, () -> daySalesDto.get(form));

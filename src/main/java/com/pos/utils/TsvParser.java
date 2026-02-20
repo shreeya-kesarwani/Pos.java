@@ -7,6 +7,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 public class TsvParser {
 
     private TsvParser() {}
@@ -16,20 +18,22 @@ public class TsvParser {
             List<String[]> rows = new ArrayList<>();
             String line;
             while ((line = br.readLine()) != null) {
-                if (!line.trim().isEmpty()) rows.add(line.split("\t", -1)); // keep empty cells
+                if (!line.trim().isEmpty()) rows.add(line.split("\t", -1));
             }
-            if (rows.isEmpty()) throw new ApiException("Empty TSV file");
+            if (rows.isEmpty()) throw new ApiException(EMPTY_TSV_FILE.value());
             return rows;
         } catch (IOException e) {
-            throw new ApiException("Failed to read TSV file");
+            throw new ApiException(FAILED_TO_READ_TSV_FILE.value());
         }
     }
 
     public static void validateHeader(String[] actual, String... expected) throws ApiException {
-        if (actual.length < expected.length) throw new ApiException("Invalid header length");
+        if (actual == null || expected == null) throw new ApiException(INVALID_TSV_HEADER.value());
+        if (actual.length < expected.length) throw new ApiException(INVALID_TSV_HEADER_LENGTH.value());
+
         for (int i = 0; i < expected.length; i++) {
             if (!expected[i].equalsIgnoreCase(s(actual, i))) {
-                throw new ApiException("Invalid header. Expected '" + expected[i] + "' but found '" + s(actual, i) + "'");
+                throw new ApiException(INVALID_TSV_HEADER.value());
             }
         }
     }
@@ -40,7 +44,6 @@ public class TsvParser {
     }
 
     public static byte[] buildErrorTsv(List<String[]> originalRows, List<String> rowErrors) {
-
         StringBuilder sb = new StringBuilder();
 
         String[] header = originalRows.get(0);

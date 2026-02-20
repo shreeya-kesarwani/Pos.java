@@ -30,7 +30,7 @@ class SalesReportDtoTest {
     @InjectMocks private SalesReportDto salesReportDto;
 
     @Test
-    void getCheck_shouldValidateDatesAndCallApi() throws Exception {
+    void getCheckValidatesDatesAndCallsApi() throws ApiException {
         SalesReportForm form = new SalesReportForm();
         form.setClientId(7);
         form.setStartDate(LocalDate.of(2026, 2, 1));
@@ -41,12 +41,13 @@ class SalesReportDtoTest {
                 .thenReturn(List.of());
 
         List<SalesReportData> data = salesReportDto.getCheck(form);
+
         assertNotNull(data);
         verify(salesReportApi).getCheckSalesReport(eq(form.getStartDate()), eq(form.getEndDate()), eq(7));
     }
 
     @Test
-    void getCheck_shouldThrow_whenStartAfterEnd() {
+    void getCheckThrowsWhenStartAfterEnd() {
         SalesReportForm form = new SalesReportForm();
         form.setClientId(7);
         form.setStartDate(LocalDate.of(2026, 2, 3));
@@ -60,13 +61,15 @@ class SalesReportDtoTest {
     }
 
     @Test
-    void getCheck_shouldThrow_whenBeanValidationFails() {
+    void getCheckThrowsWhenBeanValidationFails() {
         SalesReportForm form = new SalesReportForm();
 
         @SuppressWarnings("unchecked")
-        ConstraintViolation<SalesReportForm> v = mock(ConstraintViolation.class);
-        when(v.getMessage()).thenReturn("invalid");
-        when(validator.validate(any(SalesReportForm.class))).thenReturn(Set.of(v));
+        ConstraintViolation<SalesReportForm> violation = (ConstraintViolation<SalesReportForm>) mock(ConstraintViolation.class);
+        when(violation.getMessage()).thenReturn("invalid");
+
+        Set<ConstraintViolation<SalesReportForm>> violations = Set.of(violation);
+        when(validator.validate(any(SalesReportForm.class))).thenReturn(violations);
 
         ApiException ex = assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
         assertEquals("invalid", ex.getMessage());

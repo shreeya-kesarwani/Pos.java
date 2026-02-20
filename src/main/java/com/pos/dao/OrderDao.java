@@ -18,18 +18,11 @@ public class OrderDao extends BaseDao {
           AND (:end IS NULL OR o.updatedAt <= :end)
         """;
 
-    private static final String ORDER_SEARCH =
-            "SELECT o " + ORDER_FILTERS + " ORDER BY o.updatedAt DESC";
+    private static final String ORDER_SEARCH = "SELECT o " + ORDER_FILTERS + " ORDER BY o.updatedAt DESC";
 
-    private static final String ORDER_COUNT =
-            "SELECT COUNT(o) " + ORDER_FILTERS;
+    private static final String ORDER_COUNT = "SELECT COUNT(o) " + ORDER_FILTERS;
 
-    public List<Order> search(Integer id,
-                              ZonedDateTime start,
-                              ZonedDateTime end,
-                              OrderStatus status,
-                              int page,
-                              int size) {
+    public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
 
         return createQuery(ORDER_SEARCH, Order.class)
                 .setParameter("id", id)
@@ -41,10 +34,7 @@ public class OrderDao extends BaseDao {
                 .getResultList();
     }
 
-    public Long getCount(Integer id,
-                         ZonedDateTime start,
-                         ZonedDateTime end,
-                         OrderStatus status) {
+    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
 
         return createQuery(ORDER_COUNT, Long.class)
                 .setParameter("id", id)

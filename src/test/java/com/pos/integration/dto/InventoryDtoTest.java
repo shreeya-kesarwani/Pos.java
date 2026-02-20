@@ -14,14 +14,15 @@ import com.pos.utils.InventoryTsvParser;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -38,21 +39,31 @@ class InventoryDtoTest {
     @InjectMocks private InventoryDto inventoryDto;
 
     @Test
-    void upload_shouldReturn_whenParserReturnsEmpty() throws Exception {
-        MultipartFile file = new MockMultipartFile("file", "i.tsv", "text/tab-separated-values",
-                "".getBytes(StandardCharsets.UTF_8));
+    void uploadReturnsWhenParserReturnsEmpty() throws Exception {
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "i.tsv",
+                "text/tab-separated-values",
+                "".getBytes(StandardCharsets.UTF_8)
+        );
 
         try (MockedStatic<InventoryTsvParser> mocked = mockStatic(InventoryTsvParser.class)) {
             mocked.when(() -> InventoryTsvParser.parse(any(MultipartFile.class))).thenReturn(List.of());
+
             inventoryDto.upload(file);
+
             verifyNoInteractions(inventoryApi, productApi);
         }
     }
 
     @Test
-    void upload_shouldParseConvertAndCallApiAdd() throws Exception {
-        MultipartFile file = new MockMultipartFile("file", "i.tsv", "text/tab-separated-values",
-                "x".getBytes(StandardCharsets.UTF_8));
+    void uploadParsesConvertsAndCallsApiAdd() throws Exception {
+        MultipartFile file = new MockMultipartFile(
+                "file",
+                "i.tsv",
+                "text/tab-separated-values",
+                "x".getBytes(StandardCharsets.UTF_8)
+        );
 
         InventoryForm f = new InventoryForm();
         f.setBarcode("  b1  ");
@@ -67,21 +78,24 @@ class InventoryDtoTest {
         inv.setQuantity(5);
 
         try (MockedStatic<InventoryTsvParser> parser = mockStatic(InventoryTsvParser.class);
-             MockedStatic<InventoryConversion> conv = mockStatic(InventoryConversion.class);
-             MockedStatic<ProductApi> productApiStatic = mockStatic(ProductApi.class)) {
+             MockedStatic<InventoryConversion> conv = mockStatic(InventoryConversion.class)) {
 
             parser.when(() -> InventoryTsvParser.parse(any(MultipartFile.class))).thenReturn(List.of(f));
+
+            // only keep this if your InventoryDto.upload actually calls productApi.getCheckByBarcodes(...)
             when(productApi.getCheckByBarcodes(eq(List.of("b1")))).thenReturn(List.of(p));
-            productApiStatic.when(() -> ProductApi.toProductIdByBarcode(anyList())).thenReturn(Map.of("b1", 10));
-            conv.when(() -> InventoryConversion.convertFormsToPojos(anyList(), anyMap())).thenReturn(List.of(inv));
+
+            conv.when(() -> InventoryConversion.convertFormsToPojos(anyList(), anyMap()))
+                    .thenReturn(List.of(inv));
 
             inventoryDto.upload(file);
+
             verify(inventoryApi).add(eq(List.of(inv)));
         }
     }
 
     @Test
-    void getAll_shouldNormalizeAndReturnPaginatedResponse() throws Exception {
+    void getAllNormalizesAndReturnsPaginatedResponse() throws Exception {
         Inventory i = new Inventory();
         i.setProductId(1);
         i.setQuantity(3);
@@ -96,6 +110,7 @@ class InventoryDtoTest {
         when(productApi.getByIds(eq(List.of(1)))).thenReturn(List.of(p));
 
         PaginatedResponse<InventoryData> resp = inventoryDto.getAll("  b ", "  name ", 2, 20);
+
         assertEquals(1L, resp.getTotalCount());
         assertEquals(2, resp.getPageNo());
         assertEquals(1, resp.getData().size());

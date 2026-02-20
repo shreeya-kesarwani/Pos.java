@@ -23,7 +23,6 @@ public class DaySalesApi {
     @Autowired
     private DaySalesDao daySalesDao;
 
-    @Transactional(readOnly = true)
     public List<DaySales> getDaySales(ZonedDateTime dayInAnyZone) throws ApiException {
         if (dayInAnyZone == null) {
             throw new ApiException(DATE_REQUIRED.value());
@@ -47,12 +46,7 @@ public class DaySalesApi {
 
     private void calculateDaySales(ZonedDateTime startBusiness, ZonedDateTime endBusiness) throws ApiException {
         Object[] row = daySalesDao.selectInvoicedSalesAggregatesForDay(startBusiness, endBusiness);
-        DaySales pojo = DaySalesConversion.toPojo(
-                startBusiness,
-                row[0],
-                row[1],
-                row[2]
-        );
+        DaySales pojo = DaySalesConversion.toPojo(startBusiness, row[0], row[1], row[2]);
         daySalesDao.insert(pojo);
     }
 

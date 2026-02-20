@@ -9,34 +9,32 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 public class ProductTsvParser {
 
     private ProductTsvParser() {}
 
-    // ✅ NEW: accept clientId and set it into every parsed form
     public static ProductTsvParseResult parse(MultipartFile file, Integer clientId) throws ApiException, IOException {
         if (clientId == null) {
-            throw new ApiException("clientId is required for bulk upload");
+            throw new ApiException(CLIENT_ID_REQUIRED.value());
         }
 
         List<String[]> rows = TsvParser.read(file.getInputStream());
-        if (rows == null || rows.isEmpty()) {
-            throw new ApiException("Empty TSV file");
-        }
 
         try {
             validateFlexibleHeader(rows.get(0));
         } catch (ApiException headerEx) {
             List<String> errors = new ArrayList<>();
             for (int i = 1; i < rows.size(); i++) {
-                errors.add("Invalid header: " + headerEx.getMessage());
+                errors.add(headerEx.getMessage());
             }
 
             byte[] errorTsv = TsvParser.buildErrorTsv(rows, errors);
             String fname = "product_upload_errors_" + LocalDateTime.now().toString().replace(":", "-") + ".tsv";
 
             throw new UploadValidationException(
-                    "TSV has errors",
+                    TSV_HAS_ERRORS.value(),
                     errorTsv,
                     fname,
                     "text/tab-separated-values"
@@ -58,17 +56,16 @@ public class ProductTsvParser {
                 form.setName(TsvParser.s(r, 1));
 
                 String mrpStr = TsvParser.s(r, 2);
-                if (mrpStr.isEmpty()) throw new ApiException("mrp is required");
+                if (mrpStr.isEmpty()) throw new ApiException(MRP_REQUIRED.value());
                 try {
                     form.setMrp(Double.parseDouble(mrpStr));
                 } catch (NumberFormatException e) {
-                    throw new ApiException("Invalid mrp");
+                    throw new ApiException(INVALID_MRP.value());
                 }
 
                 String img = (r != null && r.length > 3) ? TsvParser.s(r, 3) : "";
                 form.setImageUrl(img.isEmpty() ? null : img);
 
-                // ✅ set same clientId for all rows
                 form.setClientId(clientId);
 
                 validateShape(form);
@@ -76,7 +73,7 @@ public class ProductTsvParser {
 
                 String bc = form.getBarcode();
                 if (!seenBarcodes.add(bc)) {
-                    throw new ApiException("Duplicate barcode in file: " + bc);
+                    throw new ApiException(INVALID_ROW.value());
                 }
 
                 validForms.add(form);
@@ -84,7 +81,7 @@ public class ProductTsvParser {
             } catch (ApiException ex) {
                 err = "Line " + (i + 1) + ": " + ex.getMessage();
             } catch (Exception ex) {
-                err = "Line " + (i + 1) + ": Invalid row";
+                err = "Line " + (i + 1) + ": " + INVALID_ROW.value();
             }
 
             errors.add(err);
@@ -96,7 +93,7 @@ public class ProductTsvParser {
             String fname = "product_upload_errors_" + LocalDateTime.now().toString().replace(":", "-") + ".tsv";
 
             throw new UploadValidationException(
-                    "TSV has errors",
+                    TSV_HAS_ERRORS.value(),
                     errorTsv,
                     fname,
                     "text/tab-separated-values"
@@ -108,7 +105,7 @@ public class ProductTsvParser {
 
     private static void validateFlexibleHeader(String[] headerRow) throws ApiException {
         if (headerRow == null || headerRow.length == 0) {
-            throw new ApiException("Missing header");
+            throw new ApiException(MISSING_TSV_HEADER.value());
         }
 
         List<String> h = new ArrayList<>();
@@ -119,28 +116,27 @@ public class ProductTsvParser {
 
         if (h.size() == 3) {
             if (!h.get(0).equals("barcode") || !h.get(1).equals("name") || !h.get(2).equals("mrp")) {
-                throw new ApiException("Expected header: barcode, name, mrp (optional imageurl)");
+                throw new ApiException(INVALID_TSV_HEADER.value());
             }
             return;
         }
 
         if (h.size() == 4) {
             if (!h.get(0).equals("barcode") || !h.get(1).equals("name") || !h.get(2).equals("mrp") || !h.get(3).equals("imageurl")) {
-                throw new ApiException("Expected header: barcode, name, mrp, imageurl");
+                throw new ApiException(INVALID_TSV_HEADER.value());
             }
             return;
         }
 
-        throw new ApiException("Invalid header length (expected 3 or 4 columns)");
+        throw new ApiException(INVALID_TSV_HEADER_LENGTH.value());
     }
 
     private static void validateShape(ProductForm form) throws ApiException {
-        if (form.getBarcode() == null || form.getBarcode().isBlank()) throw new ApiException("barcode is required");
-        if (form.getName() == null || form.getName().isBlank()) throw new ApiException("name is required");
-        if (form.getMrp() == null) throw new ApiException("mrp is required");
-        if (form.getMrp() < 0) throw new ApiException("mrp cannot be negative");
-        if (form.getClientId() == null) throw new ApiException("clientId is required");
-        // imageUrl optional
+        if (form.getBarcode() == null || form.getBarcode().isBlank()) throw new ApiException(BARCODE_REQUIRED.value());
+        if (form.getName() == null || form.getName().isBlank()) throw new ApiException(NAME_REQUIRED.value());
+        if (form.getMrp() == null) throw new ApiException(MRP_REQUIRED.value());
+        if (form.getMrp() < 0) throw new ApiException(MRP_CANNOT_BE_NEGATIVE.value());
+        if (form.getClientId() == null) throw new ApiException(CLIENT_ID_REQUIRED.value());
     }
 
     private static void normalizeShape(ProductForm form) {

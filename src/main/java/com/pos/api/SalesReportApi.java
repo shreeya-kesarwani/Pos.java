@@ -20,12 +20,10 @@ public class SalesReportApi {
     @Autowired
     private SalesReportDao salesReportDao;
 
-    @Transactional(readOnly = true)
     public List<SalesReportData> getSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) {
         return salesReportDao.getSalesReportRows(startDate, endDate, clientId);
     }
 
-    @Transactional(readOnly = true)
     public List<SalesReportData> getCheckSalesReport(LocalDate startDate, LocalDate endDate, Integer clientId) throws ApiException {
 
         List<SalesReportData> rows = getSalesReport(startDate, endDate, clientId);

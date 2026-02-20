@@ -9,7 +9,9 @@ import com.pos.utils.UserTsvUploadUtil;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,7 +32,7 @@ class UserUploadDtoTest {
     @InjectMocks private UserUploadDto userUploadDto;
 
     @Test
-    void upload_shouldParseTsvAndCallBulkCreateOrUpdate() throws Exception {
+    void uploadParsesTsvAndCallsBulkCreateOrUpdate() throws Exception {
         MultipartFile file = new MockMultipartFile(
                 "file",
                 "u.tsv",

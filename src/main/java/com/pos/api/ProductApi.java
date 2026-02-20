@@ -2,6 +2,7 @@ package com.pos.api;
 
 import com.pos.dao.ProductDao;
 import com.pos.exception.ApiException;
+import com.pos.model.constants.ErrorMessages;
 import com.pos.pojo.Product;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -23,12 +24,10 @@ public class ProductApi {
     @Autowired
     private ProductDao productDao;
 
-    @Transactional(readOnly = true)
     public Product get(Integer id) {
         return productDao.selectById(id);
     }
 
-    @Transactional(readOnly = true)
     public Product getCheck(Integer id) throws ApiException {
         Product product = get(id);
         if (product == null) {
@@ -37,19 +36,16 @@ public class ProductApi {
         return product;
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getByIds(List<Integer> ids) {
         if (CollectionUtils.isEmpty(ids)) return List.of();
         return productDao.selectByIds(ids);
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getByBarcodes(List<String> barcodes) {
         if (CollectionUtils.isEmpty(barcodes)) return List.of();
         return productDao.selectByBarcodes(barcodes);
     }
 
-    @Transactional(readOnly = true)
     public List<Product> getCheckByBarcodes(List<String> barcodes) throws ApiException {
         if (CollectionUtils.isEmpty(barcodes)) {
             throw new ApiException(AT_LEAST_ONE_BARCODE_REQUIRED.value());
@@ -57,7 +53,6 @@ public class ProductApi {
 
         List<Product> found = productDao.selectByBarcodes(barcodes);
         Set<String> foundSet = toBarcodeSet(found);
-
         List<String> missing = findMissingBarcodes(barcodes, foundSet);
         if (!missing.isEmpty()) {
             throw new ApiException(PRODUCTS_NOT_FOUND_FOR_BARCODES.value() + ": " + missing);
@@ -66,13 +61,11 @@ public class ProductApi {
         return found;
     }
 
-    @Transactional(readOnly = true)
     public Product getByBarcode(String barcode) {
         List<Product> list = productDao.selectByBarcodes(List.of(barcode));
         return list.isEmpty() ? null : list.get(0);
     }
 
-    @Transactional(readOnly = true)
     public Product getCheckByBarcode(String barcode) throws ApiException {
         Product product = getByBarcode(barcode);
         if (product == null) {
@@ -81,7 +74,6 @@ public class ProductApi {
         return product;
     }
 
-    @Transactional(readOnly = true)
     public List<Integer> findProductIdsByBarcodeOrName(String barcode, String productName) {
         return productDao.findProductIdsByBarcodeOrName(barcode, productName);
     }
@@ -110,17 +102,17 @@ public class ProductApi {
     }
 
     public void update(Integer productId, Product product) throws ApiException {
+
         Product existing = getCheck(productId);
         if (product.getBarcode() != null && !product.getBarcode().equals(existing.getBarcode())) {
-            throw new ApiException("Barcode cannot be modified");
+            throw new ApiException(BARCODE_CANNOT_BE_MODIFIED.value());
         }
         if (product.getClientId() != null && !product.getClientId().equals(existing.getClientId())) {
-            throw new ApiException("Client cannot be modified");
+            throw new ApiException(CLIENT_CANNOT_BE_MODIFIED.value());
         }
         existing.setName(product.getName());
         existing.setMrp(product.getMrp());
         existing.setImageUrl(product.getImageUrl());
-        existing.setClientId(product.getClientId());
     }
 
     public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
@@ -132,12 +124,10 @@ public class ProductApi {
         }
     }
 
-    @Transactional(readOnly = true)
     public List<Product> search(String name, String barcode, Integer clientId, int page, int pageSize) {
         return productDao.search(name, barcode, clientId, page, pageSize);
     }
 
-    @Transactional(readOnly = true)
     public long getCount(String name, String barcode, Integer clientId) {
         return productDao.getCount(name, barcode, clientId);
     }
@@ -183,6 +173,4 @@ public class ProductApi {
                         (a, b) -> a
                 ));
     }
-
-
 }

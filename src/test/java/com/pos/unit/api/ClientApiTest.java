@@ -6,7 +6,6 @@ import com.pos.exception.ApiException;
 import com.pos.pojo.Client;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -15,6 +14,7 @@ import java.util.List;
 
 import static com.pos.model.constants.ErrorMessages.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -26,10 +26,8 @@ class ClientApiTest {
     @Mock
     private ClientDao clientDao;
 
-    // ---------------- get / getCheck ----------------
-
     @Test
-    void get_shouldDelegateToDao() {
+    void getShouldDelegateToDao() {
         Client c = new Client();
         when(clientDao.selectById(1)).thenReturn(c);
 
@@ -41,7 +39,7 @@ class ClientApiTest {
     }
 
     @Test
-    void getCheck_shouldReturn_whenFound() throws ApiException {
+    void getCheckShouldReturnWhenFound() throws ApiException {
         Client c = new Client();
         when(clientDao.selectById(10)).thenReturn(c);
 
@@ -52,20 +50,17 @@ class ClientApiTest {
     }
 
     @Test
-    void getCheck_shouldThrow_whenNotFound() {
+    void getCheckShouldThrowWhenNotFound() {
         when(clientDao.selectById(99)).thenReturn(null);
 
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.getCheck(99));
         assertTrue(ex.getMessage().contains(CLIENT_ID_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("99"));
-
         verify(clientDao).selectById(99);
     }
 
-    // ---------------- getByName / getCheckByName ----------------
-
     @Test
-    void getByName_shouldDelegateToDao() {
+    void getByNameShouldDelegateToDao() {
         Client c = new Client();
         when(clientDao.selectByName("abc")).thenReturn(c);
 
@@ -76,14 +71,15 @@ class ClientApiTest {
     }
 
     @Test
-    void getCheckByName_shouldReturnNull_whenNameNull() throws ApiException {
+    void getCheckByNameShouldReturnNullWhenNameNull() throws ApiException {
         Client out = clientApi.getCheckByName(null);
+
         assertNull(out);
         verifyNoInteractions(clientDao);
     }
 
     @Test
-    void getCheckByName_shouldReturn_whenFound() throws ApiException {
+    void getCheckByNameShouldReturnWhenFound() throws ApiException {
         Client c = new Client();
         when(clientDao.selectByName("c1")).thenReturn(c);
 
@@ -94,23 +90,19 @@ class ClientApiTest {
     }
 
     @Test
-    void getCheckByName_shouldThrow_whenNotFound() {
+    void getCheckByNameShouldThrowWhenNotFound() {
         when(clientDao.selectByName("missing")).thenReturn(null);
 
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.getCheckByName("missing"));
         assertTrue(ex.getMessage().contains(CLIENT_NAME_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("missing"));
-
         verify(clientDao).selectByName("missing");
     }
 
-    // ---------------- add ----------------
-
     @Test
-    void add_shouldInsert_whenNameNotExists() throws ApiException {
+    void addShouldInsertWhenNameNotExists() throws ApiException {
         Client c = new Client();
         c.setName("new");
-
         when(clientDao.selectByName("new")).thenReturn(null);
 
         clientApi.add(c);
@@ -121,10 +113,9 @@ class ClientApiTest {
     }
 
     @Test
-    void add_shouldThrow_whenClientAlreadyExists() {
+    void addShouldThrowWhenClientAlreadyExists() {
         Client c = new Client();
         c.setName("dup");
-
         when(clientDao.selectByName("dup")).thenReturn(new Client());
 
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.add(c));
@@ -135,18 +126,14 @@ class ClientApiTest {
         verify(clientDao, never()).insert(any());
     }
 
-    // ---------------- update ----------------
-
     @Test
-    void update_shouldUpdateFields_whenNameFreeOrSameClient() throws ApiException {
+    void updateShouldUpdateFieldsWhenNameFreeOrSameClient() throws ApiException {
         Client existing = new Client();
         existing.setId(1);
         existing.setName("old");
         existing.setEmail("old@mail");
 
         when(clientDao.selectById(1)).thenReturn(existing);
-
-        // No other client has the new name
         when(clientDao.selectByName("newName")).thenReturn(null);
 
         Client incoming = new Client();
@@ -163,7 +150,7 @@ class ClientApiTest {
     }
 
     @Test
-    void update_shouldAllowSameName_ifOtherIsSameClientId() throws ApiException {
+    void updateShouldAllowSameNameWhenOtherIsSameClientId() throws ApiException {
         Client existing = new Client();
         existing.setId(1);
         existing.setName("same");
@@ -171,7 +158,7 @@ class ClientApiTest {
         when(clientDao.selectById(1)).thenReturn(existing);
 
         Client other = new Client();
-        other.setId(1); // same id => allowed
+        other.setId(1);
 
         when(clientDao.selectByName("same")).thenReturn(other);
 
@@ -189,15 +176,13 @@ class ClientApiTest {
     }
 
     @Test
-    void update_shouldThrow_whenNameTakenByOtherClient() {
+    void updateShouldThrowWhenNameTakenByOtherClient() {
         Client existing = new Client();
         existing.setId(1);
-
         when(clientDao.selectById(1)).thenReturn(existing);
 
         Client other = new Client();
-        other.setId(2); // different client has same name
-
+        other.setId(2);
         when(clientDao.selectByName("taken")).thenReturn(other);
 
         Client incoming = new Client();
@@ -212,7 +197,7 @@ class ClientApiTest {
     }
 
     @Test
-    void update_shouldThrow_whenClientIdNotFound() {
+    void updateShouldThrowWhenClientIdNotFound() {
         when(clientDao.selectById(404)).thenReturn(null);
 
         Client incoming = new Client();
@@ -224,10 +209,8 @@ class ClientApiTest {
         verify(clientDao, never()).selectByName(any());
     }
 
-    // ---------------- search / count passthrough ----------------
-
     @Test
-    void search_shouldDelegateToDao() {
+    void searchShouldDelegateToDao() {
         List<Client> expected = List.of(new Client());
         when(clientDao.searchByParams(1, "n", "e", 0, 10)).thenReturn(expected);
 
@@ -238,7 +221,7 @@ class ClientApiTest {
     }
 
     @Test
-    void getCount_shouldDelegateToDao() {
+    void getCountShouldDelegateToDao() {
         when(clientDao.getCount(1, "n", "e")).thenReturn(5L);
 
         Long out = clientApi.getCount(1, "n", "e");
@@ -247,17 +230,15 @@ class ClientApiTest {
         verify(clientDao).getCount(1, "n", "e");
     }
 
-    // ---------------- getByNames / getByIds ----------------
-
     @Test
-    void getByNames_shouldReturnEmpty_whenNullOrEmpty() {
+    void getByNamesShouldReturnEmptyWhenNullOrEmpty() {
         assertEquals(List.of(), clientApi.getByNames(null));
         assertEquals(List.of(), clientApi.getByNames(List.of()));
         verifyNoInteractions(clientDao);
     }
 
     @Test
-    void getByNames_shouldDelegate_whenNonEmpty() {
+    void getByNamesShouldDelegateWhenNonEmpty() {
         List<String> names = List.of("a", "b");
         List<Client> expected = List.of(new Client(), new Client());
 
@@ -270,14 +251,14 @@ class ClientApiTest {
     }
 
     @Test
-    void getByIds_shouldReturnEmpty_whenNullOrEmpty() {
+    void getByIdsShouldReturnEmptyWhenNullOrEmpty() {
         assertEquals(List.of(), clientApi.getByIds(null));
         assertEquals(List.of(), clientApi.getByIds(List.of()));
         verifyNoInteractions(clientDao);
     }
 
     @Test
-    void getByIds_shouldDelegate_whenNonEmpty() {
+    void getByIdsShouldDelegateWhenNonEmpty() {
         List<Integer> ids = List.of(1, 2);
         List<Client> expected = List.of(new Client());
 

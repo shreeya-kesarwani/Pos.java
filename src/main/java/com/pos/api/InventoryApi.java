@@ -21,12 +21,11 @@ public class InventoryApi {
     @Autowired
     private InventoryDao inventoryDao;
 
-    @Transactional(readOnly = true)
+
     public Inventory get(Integer id) {
         return inventoryDao.selectById(id);
     }
 
-    @Transactional(readOnly = true)
     public Inventory getCheck(Integer id) throws ApiException {
         Inventory inventory = get(id);
         if (inventory == null) {
@@ -35,12 +34,10 @@ public class InventoryApi {
         return inventory;
     }
 
-    @Transactional(readOnly = true)
     public Inventory getByProductId(Integer productId) {
         return inventoryDao.selectByProductId(productId);
     }
 
-    @Transactional(readOnly = true)
     public Inventory getCheckByProductId(Integer productId) throws ApiException {
         Inventory inventory = getByProductId(productId);
         if (inventory == null) {
@@ -49,7 +46,6 @@ public class InventoryApi {
         return inventory;
     }
 
-    @Transactional(readOnly = true)
     public List<Inventory> findByProductIds(List<Integer> productIds, int page, int size) {
         if (CollectionUtils.isEmpty(productIds)) return List.of();
         return inventoryDao.findByProductIds(productIds, page, size);
@@ -84,6 +80,8 @@ public class InventoryApi {
         if (CollectionUtils.isEmpty(productIds)) return 0L;
         return inventoryDao.getCountByProductIds(productIds);
     }
+
+    // -------------------- Static helpers --------------------
 
     public static List<String> extractBarcodes(List<InventoryForm> forms) {
         if (forms == null || forms.isEmpty()) return List.of();

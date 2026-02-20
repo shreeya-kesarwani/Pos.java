@@ -22,6 +22,13 @@ public class DaySalesDto extends AbstractDto {
     @Autowired
     private DaySalesApi daySalesApi;
 
+    public List<DaySalesData> get(DaySalesForm form) throws ApiException {
+
+        validate(form);
+        List<DaySales> daySalesList = daySalesApi.getDaySales(form.getStartDate());
+        return DaySalesConversion.toData(daySalesList);
+    }
+
     private void validate(DaySalesForm form) throws ApiException {
         normalize(form);
         validateForm(form);
@@ -29,12 +36,5 @@ public class DaySalesDto extends AbstractDto {
         if (start == null) {
             throw new ApiException(START_AND_END_DATE_REQUIRED.value());
         }
-    }
-
-    public List<DaySalesData> get(DaySalesForm form) throws ApiException {
-
-        validate(form);
-        List<DaySales> daySalesList = daySalesApi.getDaySales(form.getStartDate());
-        return DaySalesConversion.toData(daySalesList);
     }
 }

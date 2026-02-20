@@ -22,8 +22,8 @@ import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
 import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
@@ -49,14 +49,14 @@ class OrderDtoTest {
     @InjectMocks private OrderDto orderDto;
 
     @Test
-    void create_shouldNormalizeValidateAndCallFlowWithResolvedProductIds() throws Exception {
-        OrderItemForm i1 = new OrderItemForm();
-        i1.setBarcode("  b1 ");
-        i1.setQuantity(2);
-        i1.setSellingPrice(10.0);
+    void createNormalizesValidatesAndCallsFlowWithResolvedProductIds() throws ApiException {
+        OrderItemForm item = new OrderItemForm();
+        item.setBarcode("  b1 ");
+        item.setQuantity(2);
+        item.setSellingPrice(10.0);
 
         OrderForm form = new OrderForm();
-        form.setItems(List.of(i1));
+        form.setItems(List.of(item));
 
         when(validator.validate(any(OrderForm.class))).thenReturn(Set.of());
 
@@ -72,20 +72,21 @@ class OrderDtoTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<OrderItem>> itemsCaptor = ArgumentCaptor.forClass(List.class);
+
         verify(orderFlow).createOrder(itemsCaptor.capture());
         assertEquals(1, itemsCaptor.getValue().size());
         assertEquals(99, itemsCaptor.getValue().get(0).getProductId());
     }
 
     @Test
-    void create_shouldThrow_whenBarcodeMissing() {
-        OrderItemForm i1 = new OrderItemForm();
-        i1.setBarcode("   ");
-        i1.setQuantity(1);
-        i1.setSellingPrice(1.0);
+    void createThrowsWhenBarcodeMissing() {
+        OrderItemForm item = new OrderItemForm();
+        item.setBarcode("   ");
+        item.setQuantity(1);
+        item.setSellingPrice(1.0);
 
         OrderForm form = new OrderForm();
-        form.setItems(List.of(i1));
+        form.setItems(List.of(item));
 
         when(validator.validate(any(OrderForm.class))).thenReturn(Set.of());
 
@@ -95,7 +96,7 @@ class OrderDtoTest {
     }
 
     @Test
-    void search_shouldParseStatusAndReturnPaginatedResponse() throws Exception {
+    void searchParsesStatusAndReturnsPaginatedResponse() throws ApiException {
         Order o = new Order();
         o.setId(1);
         o.setStatus(OrderStatus.CREATED);
@@ -105,7 +106,6 @@ class OrderDtoTest {
         when(orderApi.getCount(eq(null), any(), any(), eq(OrderStatus.CREATED)))
                 .thenReturn(1L);
 
-        // DTO should fetch items in bulk via orderApi (not flow)
         when(orderApi.getItemsByOrderIds(eq(List.of(1)))).thenReturn(List.of());
 
         PaginatedResponse<OrderData> resp =
@@ -119,10 +119,7 @@ class OrderDtoTest {
     }
 
     @Test
-    void getItems_shouldReturnEmpty_whenNoItems() throws Exception {
-        // IMPORTANT: orderApi is a MOCK.
-        // Even if real orderApi.getItemsByOrderId() calls getCheck internally,
-        // Mockito will NOT execute that internal method body here.
+    void getItemsReturnsEmptyWhenNoItems() throws ApiException {
         when(orderApi.getItemsByOrderId(eq(5))).thenReturn(List.of());
 
         List<OrderItemData> items = orderDto.getItems(5);
@@ -134,7 +131,7 @@ class OrderDtoTest {
     }
 
     @Test
-    void generateInvoice_shouldThrow_whenOrderHasNoItems() throws Exception {
+    void generateInvoiceThrowsWhenOrderHasNoItems() throws ApiException {
         when(orderApi.getItemsByOrderId(eq(9))).thenReturn(List.of());
 
         ApiException ex = assertThrows(ApiException.class, () -> orderDto.generateInvoice(9));
@@ -145,7 +142,7 @@ class OrderDtoTest {
     }
 
     @Test
-    void generateInvoice_shouldCallClientAndStoreAndAttach() throws Exception {
+    void generateInvoiceCallsClientAndStoresAndAttaches() throws ApiException {
         OrderItem oi = new OrderItem();
         oi.setOrderId(10);
         oi.setProductId(7);
@@ -173,8 +170,8 @@ class OrderDtoTest {
                     .thenAnswer(inv -> null);
 
             InvoiceData out = orderDto.generateInvoice(10);
-            assertEquals(data.getBase64Pdf(), out.getBase64Pdf());
 
+            assertEquals(data.getBase64Pdf(), out.getBase64Pdf());
             storage.verify(() -> InvoiceStorageUtil.storeAndAttach(eq(orderApi), anyString(), eq(10), eq(pdf)));
         }
 
@@ -183,18 +180,20 @@ class OrderDtoTest {
     }
 
     @Test
-    void downloadInvoice_shouldUseExistingInvoiceBytes_whenPresent() throws Exception {
+    void downloadInvoiceUsesExistingInvoiceBytesWhenPresent() throws ApiException {
         Order o = new Order();
         o.setId(1);
         o.setInvoicePath("/tmp/x.pdf");
         when(orderApi.getCheck(eq(1))).thenReturn(o);
 
         byte[] bytes = "abc".getBytes();
+
         try (MockedStatic<InvoicePathUtil> pathUtil = mockStatic(InvoicePathUtil.class)) {
             pathUtil.when(() -> InvoicePathUtil.tryReadInvoiceBytes(eq("/tmp/x.pdf"), eq(1))).thenReturn(bytes);
             pathUtil.when(() -> InvoicePathUtil.invoiceFileName(eq(1))).thenReturn("invoice-1.pdf");
 
             ResponseEntity<byte[]> resp = orderDto.downloadInvoice(1);
+
             assertArrayEquals(bytes, resp.getBody());
             verify(invoiceClient, never()).generate(any());
         }

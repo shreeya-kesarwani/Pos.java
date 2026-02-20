@@ -49,6 +49,8 @@ public enum ErrorMessages {
     SOME_BARCODES_ALREADY_EXIST("Some barcodes already exist"),
     INVALID_CLIENT_NAME_BULK_UPLOAD("Invalid clientName in bulk upload"),
     SELLING_PRICE_EXCEEDS_MRP("Selling price cannot exceed MRP for product"),
+    BARCODE_CANNOT_BE_MODIFIED("Barcode cannot be modified"),
+    CLIENT_CANNOT_BE_MODIFIED("Client cannot be modified"),
 
     // ---------- Sales Report ----------
     NO_SALES_REPORT_DATA_FOUND("No sales report data found between"),
@@ -63,7 +65,27 @@ public enum ErrorMessages {
     EMAIL_REQUIRED("email is required"),
     DUPLICATE_EMAIL_IN_FILE("duplicate email in file"),
     INVALID_ROLE("invalid role"),
-    PASSWORD_REQUIRED("password is required");
+    PASSWORD_REQUIRED("password is required"),
+
+    // ---------- TSV / Upload ----------
+    EMPTY_TSV_FILE("Empty TSV file"),
+    FAILED_TO_READ_TSV_FILE("Failed to read TSV file"),
+    INVALID_TSV_HEADER("Invalid TSV header"),
+    INVALID_TSV_HEADER_LENGTH("Invalid TSV header length"),
+    MISSING_TSV_HEADER("Missing required TSV header"),
+    TSV_HAS_ERRORS("TSV has errors"),
+    INVALID_ROW("Invalid row"),
+
+    // ---------- Common Validation ----------
+    NAME_REQUIRED("Name is required"),
+    BARCODE_REQUIRED("Barcode cannot be empty"),
+    CLIENT_ID_REQUIRED("ClientId is required"),
+    QUANTITY_REQUIRED("Quantity is required"),
+    INVALID_QUANTITY("Invalid quantity"),
+    QUANTITY_CANNOT_BE_NEGATIVE("Quantity cannot be negative"),
+    MRP_REQUIRED("MRP is required"),
+    INVALID_MRP("Invalid MRP"),
+    MRP_CANNOT_BE_NEGATIVE("MRP cannot be negative");
 
 
     private final String msg;

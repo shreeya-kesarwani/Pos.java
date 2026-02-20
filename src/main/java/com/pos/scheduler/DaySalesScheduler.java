@@ -12,17 +12,17 @@ public class DaySalesScheduler {
 
     private static final Logger log = LoggerFactory.getLogger(DaySalesScheduler.class);
 
-    @Autowired DaySalesApi daySalesApi;
+    @Autowired
+    DaySalesApi daySalesApi;
 
-//    @Scheduled(cron = "0 * * * * *", zone = "Asia/Kolkata")
     @Scheduled(cron = "0 3 11 * * *", zone = "Asia/Kolkata")
     public void compute() {
         try {
             daySalesApi.calculateDaySales();
-            System.out.println("✅ DaySalesScheduler finished");
+            log.info("DaySalesScheduler finished successfully");
         } catch (Exception e) {
             log.error("Unexpected error in DaySalesScheduler", e);
-            System.out.println(" DaySalesScheduler failed");
+            log.error("DaySalesScheduler failed");
         }
     }
 }

@@ -4,9 +4,11 @@ import com.pos.api.SalesReportApi;
 import com.pos.dao.SalesReportDao;
 import com.pos.exception.ApiException;
 import com.pos.model.data.SalesReportData;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.*;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,6 +17,7 @@ import static com.pos.model.constants.ErrorMessages.SALES_REPORT_EMPTY;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class SalesReportApiTest {
 
     @InjectMocks
@@ -23,13 +26,8 @@ class SalesReportApiTest {
     @Mock
     private SalesReportDao salesReportDao;
 
-    @BeforeEach
-    void setup() {
-        MockitoAnnotations.openMocks(this);
-    }
-
     @Test
-    void getSalesReport_shouldDelegateToDao() {
+    void getSalesReportShouldDelegateToDao() {
         LocalDate start = LocalDate.of(2026, 2, 1);
         LocalDate end = LocalDate.of(2026, 2, 10);
         Integer clientId = 123;
@@ -40,12 +38,12 @@ class SalesReportApiTest {
         List<SalesReportData> out = salesReportApi.getSalesReport(start, end, clientId);
 
         assertSame(expected, out);
-        verify(salesReportDao, times(1)).getSalesReportRows(start, end, clientId);
+        verify(salesReportDao).getSalesReportRows(start, end, clientId);
         verifyNoMoreInteractions(salesReportDao);
     }
 
     @Test
-    void getCheckSalesReport_shouldReturnRows_whenNotEmpty() throws Exception {
+    void getCheckSalesReportShouldReturnRowsWhenNotEmpty() throws ApiException {
         LocalDate start = LocalDate.of(2026, 2, 1);
         LocalDate end = LocalDate.of(2026, 2, 10);
         Integer clientId = null;
@@ -56,11 +54,11 @@ class SalesReportApiTest {
         List<SalesReportData> out = salesReportApi.getCheckSalesReport(start, end, clientId);
 
         assertSame(rows, out);
-        verify(salesReportDao, times(1)).getSalesReportRows(start, end, clientId);
+        verify(salesReportDao).getSalesReportRows(start, end, clientId);
     }
 
     @Test
-    void getCheckSalesReport_shouldThrow_whenDaoReturnsNull() {
+    void getCheckSalesReportShouldThrowWhenDaoReturnsNull() {
         LocalDate start = LocalDate.of(2026, 2, 1);
         LocalDate end = LocalDate.of(2026, 2, 10);
         Integer clientId = 7;
@@ -75,11 +73,11 @@ class SalesReportApiTest {
         assertTrue(ex.getMessage().contains("endDate=" + end));
         assertTrue(ex.getMessage().contains("clientId=" + clientId));
 
-        verify(salesReportDao, times(1)).getSalesReportRows(start, end, clientId);
+        verify(salesReportDao).getSalesReportRows(start, end, clientId);
     }
 
     @Test
-    void getCheckSalesReport_shouldThrow_whenDaoReturnsEmptyList() {
+    void getCheckSalesReportShouldThrowWhenDaoReturnsEmptyList() {
         LocalDate start = LocalDate.of(2026, 2, 1);
         LocalDate end = LocalDate.of(2026, 2, 10);
         Integer clientId = 7;
@@ -94,6 +92,6 @@ class SalesReportApiTest {
         assertTrue(ex.getMessage().contains("endDate=" + end));
         assertTrue(ex.getMessage().contains("clientId=" + clientId));
 
-        verify(salesReportDao, times(1)).getSalesReportRows(start, end, clientId);
+        verify(salesReportDao).getSalesReportRows(start, end, clientId);
     }
 }

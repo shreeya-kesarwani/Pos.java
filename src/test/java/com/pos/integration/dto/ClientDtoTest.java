@@ -11,7 +11,9 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.*;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -30,7 +32,7 @@ class ClientDtoTest {
     @InjectMocks private ClientDto clientDto;
 
     @Test
-    void add_shouldNormalizeValidateAndCallApi() throws Exception {
+    void addNormalizesValidatesAndCallsApi() throws Exception {
         ClientForm form = new ClientForm();
         form.setName("  Acme  ");
         form.setEmail("  a@b.com  ");
@@ -38,14 +40,16 @@ class ClientDtoTest {
         when(validator.validate(any(ClientForm.class))).thenReturn(Set.of());
 
         clientDto.add(form);
+
         ArgumentCaptor<Client> captor = ArgumentCaptor.forClass(Client.class);
         verify(clientApi).add(captor.capture());
+
         assertEquals("Acme", captor.getValue().getName());
         assertEquals("a@b.com", captor.getValue().getEmail());
     }
 
     @Test
-    void update_shouldNormalizeValidateAndCallApi() throws Exception {
+    void updateNormalizesValidatesAndCallsApi() throws Exception {
         ClientForm form = new ClientForm();
         form.setName("  N  ");
         form.setEmail("  e@e.com  ");
@@ -53,11 +57,12 @@ class ClientDtoTest {
         when(validator.validate(any(ClientForm.class))).thenReturn(Set.of());
 
         clientDto.update(9, form);
+
         verify(clientApi).update(eq(9), any(Client.class));
     }
 
     @Test
-    void getClients_shouldNormalizeQueryParams() throws Exception {
+    void getClientsNormalizesQueryParams() throws Exception {
         Client c = new Client();
         c.setId(1);
         c.setName("X");
@@ -67,23 +72,26 @@ class ClientDtoTest {
         when(clientApi.getCount(eq(7), eq("name"), eq("email"))).thenReturn(1L);
 
         PaginatedResponse<ClientData> resp = clientDto.getClients(7, "  name ", "  email ", 1, 10);
+
         assertEquals(1L, resp.getTotalCount());
         assertEquals(1, resp.getData().size());
         assertEquals("X", resp.getData().get(0).getName());
     }
 
     @Test
-    void add_shouldThrow_whenValidationFails() {
+    void addThrowsWhenValidationFails() {
         ClientForm form = new ClientForm();
         form.setName("x");
 
         @SuppressWarnings("unchecked")
         ConstraintViolation<ClientForm> v = mock(ConstraintViolation.class);
         when(v.getMessage()).thenReturn("bad");
+
         when(validator.validate(any(ClientForm.class))).thenReturn(Set.of(v));
 
         ApiException ex = assertThrows(ApiException.class, () -> clientDto.add(form));
         assertEquals("bad", ex.getMessage());
+
         verifyNoInteractions(clientApi);
     }
 }

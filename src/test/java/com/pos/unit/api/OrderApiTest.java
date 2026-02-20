@@ -19,6 +19,7 @@ import java.util.List;
 
 import static com.pos.model.constants.ErrorMessages.*;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,26 +34,22 @@ class OrderApiTest {
     @Mock
     private OrderItemDao orderItemDao;
 
-    // ---------------- create ----------------
-
     @Test
-    void create_shouldThrow_whenItemsNull() {
+    void createShouldThrowWhenItemsNull() {
         ApiException ex = assertThrows(ApiException.class, () -> orderApi.create(null));
         assertTrue(ex.getMessage().contains(NO_ORDER_ITEMS_FOUND.value()));
-
         verifyNoInteractions(orderDao, orderItemDao);
     }
 
     @Test
-    void create_shouldThrow_whenItemsEmpty() {
+    void createShouldThrowWhenItemsEmpty() {
         ApiException ex = assertThrows(ApiException.class, () -> orderApi.create(List.of()));
         assertTrue(ex.getMessage().contains(NO_ORDER_ITEMS_FOUND.value()));
-
         verifyNoInteractions(orderDao, orderItemDao);
     }
 
     @Test
-    void create_shouldThrow_whenProductIdNull() {
+    void createShouldThrowWhenProductIdNull() {
         OrderItem item = new OrderItem();
         item.setProductId(null);
         item.setQuantity(1);
@@ -60,12 +57,11 @@ class OrderApiTest {
 
         ApiException ex = assertThrows(ApiException.class, () -> orderApi.create(List.of(item)));
         assertTrue(ex.getMessage().contains(PRODUCT_NOT_FOUND.value()));
-
         verifyNoInteractions(orderDao, orderItemDao);
     }
 
     @Test
-    void create_shouldThrow_whenQuantityNullOrNonPositive() {
+    void createShouldThrowWhenQuantityNullOrNonPositive() {
         OrderItem item1 = new OrderItem();
         item1.setProductId(1);
         item1.setQuantity(null);
@@ -94,7 +90,7 @@ class OrderApiTest {
     }
 
     @Test
-    void create_shouldThrow_whenSellingPriceNullOrNegative() {
+    void createShouldThrowWhenSellingPriceNullOrNegative() {
         OrderItem item1 = new OrderItem();
         item1.setProductId(1);
         item1.setQuantity(1);
@@ -115,7 +111,7 @@ class OrderApiTest {
     }
 
     @Test
-    void create_shouldInsertOrderSetStatusCreated_thenInsertItemsWithOrderId_andReturnOrderId() throws ApiException {
+    void createShouldInsertOrderThenInsertItemsAndReturnOrderId() throws ApiException {
         OrderItem i1 = new OrderItem();
         i1.setProductId(11);
         i1.setQuantity(2);
@@ -126,7 +122,6 @@ class OrderApiTest {
         i2.setQuantity(1);
         i2.setSellingPrice(5.0);
 
-        // When orderDao.insert(order) is called, we simulate DB setting id on the same object.
         doAnswer(invocation -> {
             Order o = invocation.getArgument(0);
             o.setId(999);
@@ -137,12 +132,10 @@ class OrderApiTest {
 
         assertEquals(999, orderId);
 
-        // Verify order inserted with CREATED status
         ArgumentCaptor<Order> orderCaptor = ArgumentCaptor.forClass(Order.class);
         verify(orderDao).insert(orderCaptor.capture());
         assertEquals(OrderStatus.CREATED, orderCaptor.getValue().getStatus());
 
-        // Verify items inserted, and orderId was set on them before insert
         verify(orderItemDao).insert(i1);
         verify(orderItemDao).insert(i2);
         assertEquals(999, i1.getOrderId());
@@ -151,10 +144,8 @@ class OrderApiTest {
         verifyNoMoreInteractions(orderDao, orderItemDao);
     }
 
-    // ---------------- getCheck ----------------
-
     @Test
-    void getCheck_shouldReturnOrder_whenFound() throws ApiException {
+    void getCheckShouldReturnOrderWhenFound() throws ApiException {
         Order o = new Order();
         when(orderDao.selectById(10)).thenReturn(o);
 
@@ -165,20 +156,17 @@ class OrderApiTest {
     }
 
     @Test
-    void getCheck_shouldThrow_whenNotFound() {
+    void getCheckShouldThrowWhenNotFound() {
         when(orderDao.selectById(10)).thenReturn(null);
 
         ApiException ex = assertThrows(ApiException.class, () -> orderApi.getCheck(10));
         assertTrue(ex.getMessage().contains(ORDER_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("10"));
-
         verify(orderDao).selectById(10);
     }
 
-    // ---------------- generateInvoice ----------------
-
     @Test
-    void generateInvoice_shouldThrow_whenPathNullOrBlank() {
+    void generateInvoiceShouldThrowWhenPathNullOrBlank() {
         ApiException ex1 = assertThrows(ApiException.class, () -> orderApi.generateInvoice(1, null));
         assertTrue(ex1.getMessage().contains(INVOICE_PATH_REQUIRED.value()));
 
@@ -189,7 +177,7 @@ class OrderApiTest {
     }
 
     @Test
-    void generateInvoice_shouldSetInvoicePathAndStatusInvoiced() throws ApiException {
+    void generateInvoiceShouldSetInvoicePathAndStatusInvoiced() throws ApiException {
         Order o = new Order();
         o.setId(1);
         o.setStatus(OrderStatus.CREATED);
@@ -206,13 +194,10 @@ class OrderApiTest {
         verifyNoInteractions(orderItemDao);
     }
 
-    // ---------------- search / getCount passthrough ----------------
-
     @Test
-    void search_shouldCallDaoSearch() {
+    void searchShouldCallDaoSearch() {
         ZonedDateTime start = ZonedDateTime.now().minusDays(1);
         ZonedDateTime end = ZonedDateTime.now();
-
         List<Order> expected = List.of(new Order());
 
         when(orderDao.search(1, start, end, OrderStatus.CREATED, 0, 10)).thenReturn(expected);
@@ -224,7 +209,7 @@ class OrderApiTest {
     }
 
     @Test
-    void getCount_shouldCallDaoGetCount() {
+    void getCountShouldCallDaoGetCount() {
         ZonedDateTime start = ZonedDateTime.now().minusDays(1);
         ZonedDateTime end = ZonedDateTime.now();
 
@@ -236,10 +221,8 @@ class OrderApiTest {
         verify(orderDao).getCount(1, start, end, OrderStatus.INVOICED);
     }
 
-    // ---------------- items ----------------
-
     @Test
-    void getItemsByOrderId_shouldCallDao() throws ApiException {
+    void getItemsByOrderIdShouldCallDao() throws ApiException {
         Order o = new Order();
         o.setId(5);
         when(orderDao.selectById(5)).thenReturn(o);
@@ -255,7 +238,7 @@ class OrderApiTest {
     }
 
     @Test
-    void getCheckItemsByOrderId_shouldThrow_whenNullOrEmpty() {
+    void getCheckItemsByOrderIdShouldThrowWhenNullOrEmpty() {
         when(orderItemDao.selectByOrderId(7)).thenReturn(null);
 
         ApiException ex1 = assertThrows(ApiException.class, () -> orderApi.getCheckItemsByOrderId(7));
@@ -271,7 +254,7 @@ class OrderApiTest {
     }
 
     @Test
-    void getCheckItemsByOrderId_shouldReturnItems_whenFound() throws ApiException {
+    void getCheckItemsByOrderIdShouldReturnItemsWhenFound() throws ApiException {
         List<OrderItem> expected = List.of(new OrderItem(), new OrderItem());
         when(orderItemDao.selectByOrderId(9)).thenReturn(expected);
 
@@ -282,7 +265,7 @@ class OrderApiTest {
     }
 
     @Test
-    void getItemsByOrderIds_shouldCallDao() {
+    void getItemsByOrderIdsShouldCallDao() {
         List<OrderItem> expected = List.of(new OrderItem());
         when(orderItemDao.selectByOrderIds(List.of(1, 2))).thenReturn(expected);
 
@@ -291,5 +274,4 @@ class OrderApiTest {
         assertSame(expected, out);
         verify(orderItemDao).selectByOrderIds(List.of(1, 2));
     }
-
 }

@@ -9,20 +9,19 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 
+import static com.pos.model.constants.ErrorMessages.*;
+
 public class InventoryTsvParser {
 
     private InventoryTsvParser() {}
 
-    public static List<InventoryForm> parse(MultipartFile file)
-            throws ApiException, IOException {
+    public static List<InventoryForm> parse(MultipartFile file) throws ApiException, IOException {
 
         List<String[]> rows = TsvParser.read(file.getInputStream());
         TsvParser.validateHeader(rows.get(0), "barcode", "quantity");
 
         List<String> errors = new ArrayList<>();
         List<InventoryForm> forms = new ArrayList<>();
-        List<String> barcodes = new ArrayList<>();
-
         Set<String> seenBarcodes = new HashSet<>();
 
         for (int i = 1; i < rows.size(); i++) {
@@ -34,12 +33,12 @@ public class InventoryTsvParser {
                 form.setBarcode(TsvParser.s(r, 0));
 
                 String qStr = TsvParser.s(r, 1);
-                if (qStr.isEmpty()) throw new ApiException("quantity is required");
+                if (qStr.isEmpty()) throw new ApiException(QUANTITY_REQUIRED.value());
 
                 try {
                     form.setQuantity(Integer.parseInt(qStr));
                 } catch (NumberFormatException e) {
-                    throw new ApiException("Invalid quantity");
+                    throw new ApiException(INVALID_QUANTITY.value());
                 }
 
                 validateShape(form);
@@ -47,16 +46,15 @@ public class InventoryTsvParser {
 
                 String bc = form.getBarcode();
                 if (!seenBarcodes.add(bc)) {
-                    throw new ApiException("Duplicate barcode found in TSV: " + bc);
+                    throw new ApiException(INVALID_ROW.value());
                 }
 
                 forms.add(form);
-                barcodes.add(bc);
 
             } catch (ApiException ex) {
                 err = ex.getMessage();
             } catch (Exception ex) {
-                err = "Invalid row";
+                err = INVALID_ROW.value();
             }
 
             errors.add(err);
@@ -69,7 +67,7 @@ public class InventoryTsvParser {
                     LocalDateTime.now().toString().replace(":", "-") + ".tsv";
 
             throw new UploadValidationException(
-                    "TSV has errors",
+                    TSV_HAS_ERRORS.value(),
                     errorTsv,
                     fname,
                     "text/tab-separated-values"
@@ -79,16 +77,15 @@ public class InventoryTsvParser {
         return forms;
     }
 
-
     private static void validateShape(InventoryForm form) throws ApiException {
         if (form.getBarcode() == null || form.getBarcode().isBlank()) {
-            throw new ApiException("barcode is required");
+            throw new ApiException(BARCODE_REQUIRED.value());
         }
         if (form.getQuantity() == null) {
-            throw new ApiException("quantity is required");
+            throw new ApiException(QUANTITY_REQUIRED.value());
         }
         if (form.getQuantity() < 0) {
-            throw new ApiException("quantity cannot be negative");
+            throw new ApiException(QUANTITY_CANNOT_BE_NEGATIVE.value());
         }
     }
 

@@ -4,8 +4,10 @@ import com.pos.dao.OrderDao;
 import com.pos.dao.OrderItemDao;
 import com.pos.exception.ApiException;
 import com.pos.model.constants.OrderStatus;
+import com.pos.model.data.OrderData;
 import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
+import com.pos.utils.OrderConversion;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +15,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static com.pos.model.constants.ErrorMessages.*;
 
@@ -44,7 +47,6 @@ public class OrderApi {
         return order.getId();
     }
 
-    @Transactional(readOnly = true)
     public Order getCheck(Integer orderId) throws ApiException {
         Order order = orderDao.selectById(orderId);
         if (order == null) {
@@ -54,21 +56,23 @@ public class OrderApi {
     }
 
     public void generateInvoice(Integer orderId, String path) throws ApiException {
+
         if (path == null || path.isBlank()) {
             throw new ApiException(INVOICE_PATH_REQUIRED.value());
         }
         Order order = getCheck(orderId);
+        if (order.getStatus() == OrderStatus.INVOICED) {
+            throw new ApiException("Invoice already generated for orderId=" + orderId);
+        }
         order.setInvoicePath(path);
         order.setStatus(OrderStatus.INVOICED);
     }
 
-    @Transactional(readOnly = true)
     public List<Order> search(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status, int page, int size) {
         return orderDao.search(id, start, end, status, page, size);
     }
 
-    @Transactional(readOnly = true)
-    public List<OrderItem> getItemsByOrderId(Integer orderId) {
+    public List<OrderItem> getItemsByOrderId(Integer orderId) throws ApiException {
         getCheck(orderId);
         return orderItemDao.selectByOrderId(orderId);
     }
@@ -82,14 +86,26 @@ public class OrderApi {
         return items;
     }
 
-    @Transactional(readOnly = true)
-    public Long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
-        return orderDao.getCount(id, start, end, status);
+    public long getCount(Integer id, ZonedDateTime start, ZonedDateTime end, OrderStatus status) {
+        Long count = orderDao.getCount(id, start, end, status);
+        return count == null ? 0L : count;
     }
 
-    @Transactional(readOnly = true)
     public List<OrderItem> getItemsByOrderIds(List<Integer> orderIds) {
         return orderItemDao.selectByOrderIds(orderIds);
+    }
+
+    // -------------------- Static helpers --------------------
+
+    public static List<OrderData> toOrderDataList(List<Order> orders, Map<Integer, List<OrderItem>> itemsByOrderId) {
+        if (orders == null || orders.isEmpty()) return List.of();
+
+        return orders.stream()
+                .map(o -> {
+                    List<OrderItem> items = itemsByOrderId.getOrDefault(o.getId(), List.of());
+                    return OrderConversion.toOrderDataWithTotal(o, items);
+                })
+                .toList();
     }
 
     private void validateOrderItem(Integer productId, Integer quantity, Double sellingPrice) throws ApiException {
@@ -97,11 +113,9 @@ public class OrderApi {
         if (productId == null) {
             throw new ApiException(PRODUCT_NOT_FOUND.value());
         }
-
         if (quantity == null || quantity <= 0) {
             throw new ApiException(QUANTITY_MUST_BE_POSITIVE.value());
         }
-
         if (sellingPrice == null || sellingPrice < 0) {
             throw new ApiException(SELLING_PRICE_CANNOT_BE_NEGATIVE.value());
         }

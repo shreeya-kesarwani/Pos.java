@@ -18,7 +18,6 @@ public class DaySalesDao extends BaseDao {
         ORDER BY d.date
     """;
 
-    // ✅ Safer JPQL (no ON join) + ✅ enum parameter for status
     private static final String SELECT_INVOICED_SALES_AGGREGATES_FOR_DAY = """
         SELECT COUNT(DISTINCT o.id),
                COALESCE(SUM(oi.quantity), 0),

@@ -9,7 +9,6 @@ import com.pos.model.form.LoginForm;
 import com.pos.model.form.SignupForm;
 import com.pos.pojo.User;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,10 +19,7 @@ import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 import java.util.List;
-import static com.pos.model.constants.ErrorMessages.EMAIL_CANNOT_BE_EMPTY;
-import static com.pos.model.constants.ErrorMessages.PASSWORD_CANNOT_BE_EMPTY;
 import static com.pos.utils.AuthConversion.convertUserToAuthData;
 import static com.pos.utils.AuthConversion.convertUserToSignupData;
 
@@ -63,19 +59,20 @@ public class AuthDto extends AbstractDto {
         return convertUserToAuthData(user);
     }
 
-    public void changePassword(@Valid ChangePasswordForm form) throws ApiException {
+    public void changePassword(ChangePasswordForm form) throws ApiException {
         normalize(form);
-        Integer userId = requireLoggedInUserId();
+        validateForm(form);
+        Integer userId = getRequiredUserId();
         authApi.changePassword(userId, form.getCurrentPassword(), form.getNewPassword());
     }
 
     public AuthData getSessionInfo() throws ApiException {
-        Integer userId = requireLoggedInUserId();
+        Integer userId = getRequiredUserId();
         User user = authApi.getById(userId);
         return convertUserToAuthData(user);
     }
 
-    private Integer requireLoggedInUserId() throws ApiException {
+    private Integer getRequiredUserId() throws ApiException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             throw new ApiException(ErrorMessages.NOT_LOGGED_IN.value());

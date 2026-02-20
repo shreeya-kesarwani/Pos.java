@@ -34,15 +34,13 @@ public class ClientDto extends AbstractDto {
     }
 
     public PaginatedResponse<ClientData> getClients(Integer id, String name, String email, Integer pageNumber, Integer pageSize) throws ApiException {
-        String normalizedName = normalize(name);
-        String normalizedEmail = normalize(email);
-        List<Client> clients = clientApi.search(id, normalizedName, normalizedEmail, pageNumber, pageSize);
-        Long totalCount = clientApi.getCount(id, normalizedName, normalizedEmail);
 
-        List<ClientData> dataList = clients.stream()
-                .map(pojo -> ClientConversion.convertPojoToData(pojo.getId(), pojo))
-                .toList();
+        name = normalize(name);
+        email = normalize(email);
 
+        List<Client> clients = clientApi.search(id, name, email, pageNumber, pageSize);
+        long totalCount = clientApi.getCount(id, name, email);
+        List<ClientData> dataList = ClientApi.toClientDataList(clients);
         return PaginatedResponse.of(dataList, totalCount, pageNumber);
     }
 }
