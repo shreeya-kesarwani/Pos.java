@@ -8,8 +8,8 @@ import java.util.List;
 @Repository
 public class OrderItemDao extends BaseDao {
 
-    private static final String SELECT_BY_ORDER_ID = "SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId";
-    private static final String SELECT_BY_ORDER_IDS = "SELECT oi FROM OrderItem oi WHERE oi.orderId IN :orderIds";
+    private static final String SELECT_BY_ORDER_ID = "SELECT oi FROM OrderItem oi WHERE oi.orderId = :orderId ORDER BY oi.id";
+    private static final String SELECT_BY_ORDER_IDS = "SELECT oi FROM OrderItem oi WHERE oi.orderId IN :orderIds ORDER BY oi.orderId, oi.id";
 
     public List<OrderItem> selectByOrderId(Integer orderId) {
         return createQuery(SELECT_BY_ORDER_ID, OrderItem.class)

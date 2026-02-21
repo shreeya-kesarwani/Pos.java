@@ -62,6 +62,7 @@ public class ProductApi {
     }
 
     public Product getByBarcode(String barcode) {
+        if (barcode == null) return null;
         List<Product> list = productDao.selectByBarcodes(List.of(barcode));
         return list.isEmpty() ? null : list.get(0);
     }
@@ -116,6 +117,7 @@ public class ProductApi {
     }
 
     public void validateSellingPrice(Integer productId, Double sellingPrice) throws ApiException {
+        if (sellingPrice == null) throw new ApiException(SELLING_PRICE_REQUIRED.value());
         Product product = getCheck(productId);
         if (sellingPrice > product.getMrp()) {
             throw new ApiException(

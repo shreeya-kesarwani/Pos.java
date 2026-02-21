@@ -43,5 +43,4 @@ public abstract class AbstractDto {
             throw new ApiException(violations.iterator().next().getMessage());
         }
     }
-
 }

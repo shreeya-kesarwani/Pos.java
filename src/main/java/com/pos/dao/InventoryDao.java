@@ -2,6 +2,7 @@ package com.pos.dao;
 
 import com.pos.pojo.Inventory;
 import org.springframework.stereotype.Repository;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
@@ -46,6 +47,14 @@ public class InventoryDao extends BaseDao {
         return createQuery(COUNT_BY_PRODUCT_IDS, Long.class)
                 .setParameter("productIds", productIds)
                 .getSingleResult();
+    }
+
+    public List<Inventory> selectByProductIds(List<Integer> productIds) {
+        if (CollectionUtils.isEmpty(productIds)) return List.of();
+
+        return createQuery(SELECT_BY_PRODUCT_IDS, Inventory.class)
+                .setParameter("productIds", productIds)
+                .getResultList();
     }
 
     public Inventory selectById(Integer id) {

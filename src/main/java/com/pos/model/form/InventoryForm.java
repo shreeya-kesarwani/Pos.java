@@ -13,6 +13,5 @@ public class InventoryForm {
     private String barcode;
 
     @NotNull
-    @Min(value = 1)
     private Integer quantity;
 }

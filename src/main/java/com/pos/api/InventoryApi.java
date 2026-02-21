@@ -9,8 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static com.pos.model.constants.ErrorMessages.*;
 
@@ -20,7 +20,6 @@ public class InventoryApi {
 
     @Autowired
     private InventoryDao inventoryDao;
-
 
     public Inventory get(Integer id) {
         return inventoryDao.selectById(id);
@@ -52,9 +51,18 @@ public class InventoryApi {
     }
 
     public void add(List<Inventory> inventories) throws ApiException {
+        if (CollectionUtils.isEmpty(inventories)) return;
+
+        List<Integer> productIds = extractDistinctProductIdsFromInventories(inventories);
+        List<Inventory> existingList = inventoryDao.selectByProductIds(productIds);
+        Map<Integer, Inventory> existingByProductId = toInventoryByProductId(existingList);
+
         for (Inventory inventory : inventories) {
             Integer productId = inventory.getProductId();
-            Inventory existing = inventoryDao.selectByProductId(productId);
+            if (productId == null) {
+                throw new ApiException(PRODUCT_NOT_FOUND.value());
+            }
+            Inventory existing = existingByProductId.get(productId);
             if (existing == null) {
                 inventoryDao.insert(inventory);
             } else {
@@ -64,13 +72,19 @@ public class InventoryApi {
     }
 
     public void reduceInventory(Integer productId, Integer quantity) throws ApiException {
+
+        if (productId == null) throw new ApiException(PRODUCT_NOT_FOUND.value());
         if (quantity == null || quantity <= 0) {
             throw new ApiException(QUANTITY_MUST_BE_POSITIVE.value() + ": " + quantity);
         }
+
         Inventory inventory = getCheckByProductId(productId);
         if (inventory.getQuantity() < quantity) {
             throw new ApiException(
-                    INSUFFICIENT_INVENTORY.value() + " | productId=" + productId + ", available=" + inventory.getQuantity() + ", requested=" + quantity
+                    INSUFFICIENT_INVENTORY.value()
+                            + " | productId=" + productId
+                            + ", available=" + inventory.getQuantity()
+                            + ", requested=" + quantity
             );
         }
         inventory.setQuantity(inventory.getQuantity() - quantity);
@@ -80,8 +94,6 @@ public class InventoryApi {
         if (CollectionUtils.isEmpty(productIds)) return 0L;
         return inventoryDao.getCountByProductIds(productIds);
     }
-
-    // -------------------- Static helpers --------------------
 
     public static List<String> extractBarcodes(List<InventoryForm> forms) {
         if (forms == null || forms.isEmpty()) return List.of();
@@ -102,4 +114,25 @@ public class InventoryApi {
                 .toList();
     }
 
+    public static Map<Integer, Inventory> toInventoryByProductId(List<Inventory> existingList) {
+        if (existingList == null || existingList.isEmpty()) return Map.of();
+
+        return existingList.stream()
+                .filter(i -> i.getProductId() != null)
+                .collect(Collectors.toMap(
+                        Inventory::getProductId,
+                        i -> i,
+                        (a, b) -> a
+                ));
+    }
+
+    public static List<Integer> extractDistinctProductIdsFromInventories(List<Inventory> inventories) {
+        if (inventories == null || inventories.isEmpty()) return List.of();
+
+        return inventories.stream()
+                .map(Inventory::getProductId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
 }

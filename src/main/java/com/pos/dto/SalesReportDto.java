@@ -21,7 +21,6 @@ public class SalesReportDto extends AbstractDto {
 
     public List<SalesReportData> getCheck(SalesReportForm form) throws ApiException {
         validate(form);
-        normalize(form);
         List<SalesReportData> rows = salesReportApi.getCheckSalesReport(form.getStartDate(), form.getEndDate(), form.getClientId());
         return SalesReportConversion.toData(rows);
     }

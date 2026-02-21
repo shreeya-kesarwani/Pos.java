@@ -14,8 +14,4 @@ public class DaySalesForm {
     @NotNull
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
     private ZonedDateTime startDate;
-//
-//    @NotNull
-//    @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-//    private ZonedDateTime endDate;
 }

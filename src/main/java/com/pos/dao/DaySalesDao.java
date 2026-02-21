@@ -22,7 +22,8 @@ public class DaySalesDao extends BaseDao {
         SELECT COUNT(DISTINCT o.id),
                COALESCE(SUM(oi.quantity), 0),
                COALESCE(SUM(oi.quantity * oi.sellingPrice), 0)
-        FROM Order o, OrderItem oi
+        FROM OrderItem oi
+                JOIN Order o ON oi.orderId = o.id
         WHERE oi.orderId = o.id
           AND o.status = :status
           AND o.updatedAt >= :start

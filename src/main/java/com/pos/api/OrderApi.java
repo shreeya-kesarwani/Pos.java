@@ -62,7 +62,7 @@ public class OrderApi {
         }
         Order order = getCheck(orderId);
         if (order.getStatus() == OrderStatus.INVOICED) {
-            throw new ApiException("Invoice already generated for orderId=" + orderId);
+            throw new ApiException(INVOICE_ALREADY_GENERATED.value() + ": orderId=" + orderId);
         }
         order.setInvoicePath(path);
         order.setStatus(OrderStatus.INVOICED);

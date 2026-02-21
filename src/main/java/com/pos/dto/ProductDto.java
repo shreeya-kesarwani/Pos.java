@@ -6,6 +6,7 @@ import com.pos.flow.ProductFlow;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.data.ProductData;
 import com.pos.model.form.ProductForm;
+import com.pos.model.form.ProductSearchForm;
 import com.pos.pojo.Product;
 import com.pos.utils.ProductConversion;
 import com.pos.utils.ProductTsvParser;
@@ -38,7 +39,6 @@ public class ProductDto extends AbstractDto {
     }
 
     public void addBulk(Integer clientId, MultipartFile file) throws ApiException, IOException {
-
         ProductTsvParser.ProductTsvParseResult parsed = ProductTsvParser.parse(file, clientId);
         List<ProductForm> forms = parsed.forms();
         if (CollectionUtils.isEmpty(forms)) return;
@@ -47,25 +47,23 @@ public class ProductDto extends AbstractDto {
         for (ProductForm f : forms) {
             normalize(f);
             validateForm(f);
-            Product product = ProductConversion.toPojo(f);
-            products.add(product);
+            products.add(ProductConversion.toPojo(f));
         }
+
         productFlow.addBulk(products, clientId);
     }
 
-    public PaginatedResponse<ProductData> getProducts(String name, String barcode, Integer clientId, Integer pageNumber, Integer pageSize) throws ApiException {
+    public PaginatedResponse<ProductData> getProducts(ProductSearchForm form) throws ApiException {
+        normalize(form);
+        validateForm(form);
 
-        name = normalize(name);
-        barcode = normalize(barcode);
-
-        List<Product> products = productApi.search(name, barcode, clientId, pageNumber, pageSize);
-        long total = productApi.getCount(name, barcode, clientId);
+        List<Product> products = productApi.search(form.getName(), form.getBarcode(), form.getClientId(), form.getPageNumber(), form.getPageSize());
+        long total = productApi.getCount(form.getName(), form.getBarcode(), form.getClientId());
 
         List<ProductData> dataList = new ArrayList<>(products.size());
         for (Product p : products) {
             dataList.add(ProductConversion.toData(p));
         }
-
-        return PaginatedResponse.of(dataList, total, pageNumber);
+        return PaginatedResponse.of(dataList, total, form.getPageNumber());
     }
 }

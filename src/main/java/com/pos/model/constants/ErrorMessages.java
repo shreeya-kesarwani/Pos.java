@@ -40,6 +40,8 @@ public enum ErrorMessages {
     NO_ORDER_ITEMS_FOUND("No order items found for order"),
     EMPTY_ORDER_CANNOT_BE_INVOICED("Cannot invoice an empty order"),
     SELLING_PRICE_CANNOT_BE_NEGATIVE("Selling price cannot be negative"),
+    ORDER_ID_REQUIRED("Order id is required"),
+    INVALID_DATE_RANGE("Start date must be before or equal to end date"),
 
     // ---------- Product ----------
     PRODUCT_NOT_FOUND("Product not found"),
@@ -85,7 +87,11 @@ public enum ErrorMessages {
     QUANTITY_CANNOT_BE_NEGATIVE("Quantity cannot be negative"),
     MRP_REQUIRED("MRP is required"),
     INVALID_MRP("Invalid MRP"),
-    MRP_CANNOT_BE_NEGATIVE("MRP cannot be negative");
+    MRP_CANNOT_BE_NEGATIVE("MRP cannot be negative"),
+    INVOICE_ALREADY_GENERATED("Invoice already generated"),
+    SELLING_PRICE_REQUIRED("Selling price is required"),
+    TSV_EMPTY("TSV file is empty"),
+    ROLE_REQUIRED("Role is required");
 
 
     private final String msg;

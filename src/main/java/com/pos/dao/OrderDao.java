@@ -15,7 +15,7 @@ public class OrderDao extends BaseDao {
         WHERE (:id IS NULL OR o.id = :id)
           AND (:status IS NULL OR o.status = :status)
           AND (:start IS NULL OR o.updatedAt >= :start)
-          AND (:end IS NULL OR o.updatedAt <= :end)
+          AND (:end IS NULL OR o.updatedAt < :end)
         """;
 
     private static final String ORDER_SEARCH = "SELECT o " + ORDER_FILTERS + " ORDER BY o.updatedAt DESC";

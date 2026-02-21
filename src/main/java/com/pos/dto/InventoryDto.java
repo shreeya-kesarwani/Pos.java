@@ -7,6 +7,7 @@ import com.pos.flow.InventoryFlow;
 import com.pos.model.data.InventoryData;
 import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.InventoryForm;
+import com.pos.model.form.InventorySearchForm;
 import com.pos.pojo.Inventory;
 import com.pos.pojo.Product;
 import com.pos.utils.InventoryConversion;
@@ -28,7 +29,6 @@ public class InventoryDto extends AbstractDto {
     @Autowired private ProductApi productApi;
 
     public void upload(MultipartFile file) throws ApiException, IOException {
-
         List<InventoryForm> forms = InventoryTsvParser.parse(file);
         if (CollectionUtils.isEmpty(forms)) return;
 
@@ -40,19 +40,17 @@ public class InventoryDto extends AbstractDto {
         inventoryApi.add(inventories);
     }
 
-    public PaginatedResponse<InventoryData> getAll(String barcode, String productName, Integer pageNumber, Integer pageSize) throws ApiException {
+    public PaginatedResponse<InventoryData> getAll(InventorySearchForm form) throws ApiException {
+        normalize(form);
+        validateForm(form);
 
-        barcode = normalize(barcode);
-        productName = normalize(productName);
-
-        List<Inventory> inventories = inventoryFlow.searchInventories(barcode, productName, pageNumber, pageSize);
-        long total = inventoryFlow.getSearchCount(barcode, productName);
+        List<Inventory> inventories = inventoryFlow.searchInventories(form.getBarcode(), form.getProductName(), form.getPageNumber(), form.getPageSize());
+        long total = inventoryFlow.getSearchCount(form.getBarcode(), form.getProductName());
 
         List<Integer> pageProductIds = InventoryApi.extractDistinctProductIds(inventories);
         List<Product> products = productApi.getByIds(pageProductIds);
 
         List<InventoryData> dataList = InventoryConversion.toDataList(inventories, products);
-        return PaginatedResponse.of(dataList, total, pageNumber);
+        return PaginatedResponse.of(dataList, total, form.getPageNumber());
     }
-
 }

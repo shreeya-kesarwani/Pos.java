@@ -4,6 +4,7 @@ import com.pos.dto.InventoryDto;
 import com.pos.exception.ApiException;
 import com.pos.model.data.InventoryData;
 import com.pos.model.data.PaginatedResponse;
+import com.pos.model.form.InventorySearchForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -24,12 +25,10 @@ public class InventoryController {
     }
 
     @RequestMapping(method = RequestMethod.GET)
-    public PaginatedResponse<InventoryData> get(
-            @RequestParam(required = false) String barcode,
-            @RequestParam(required = false) String productName,
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size
-    ) throws ApiException {
-        return inventoryDto.getAll(barcode, productName, page, size);
+    public PaginatedResponse<InventoryData> get(@ModelAttribute InventorySearchForm form) throws ApiException {
+        if (form.getPageNumber() == null) form.setPageNumber(0);
+        if (form.getPageSize() == null) form.setPageSize(10);
+
+        return inventoryDto.getAll(form);
     }
 }

@@ -16,11 +16,7 @@ public class InvoiceConversion {
 
     private InvoiceConversion() {}
 
-    public static InvoiceForm toInvoiceForm(
-            Integer orderId,
-            List<OrderItem> items,
-            Map<Integer, Product> productById
-    ) throws ApiException {
+    public static InvoiceForm toInvoiceForm(Integer orderId, List<OrderItem> items, Map<Integer, Product> productById) throws ApiException {
 
         InvoiceForm form = new InvoiceForm();
         form.setOrderId(orderId);
@@ -28,26 +24,24 @@ public class InvoiceConversion {
         return form;
     }
 
-    public static List<InvoiceItemForm> toInvoiceItems(
-            List<OrderItem> items,
-            Map<Integer, Product> productById
-    ) throws ApiException {
+    public static List<InvoiceItemForm> toInvoiceItems(List<OrderItem> items, Map<Integer, Product> productById) throws ApiException {
 
         List<InvoiceItemForm> invoiceItems = new ArrayList<>();
 
         for (OrderItem item : items) {
             Integer productId = item.getProductId();
-            Product p = productById.get(productId);
+            Product product = productById.get(productId);
 
-            if (p == null) {
+            if (product == null) {
+                //todo: why hard coded
                 throw new ApiException("Product not found: " + productId);
             }
 
-            InvoiceItemForm f = new InvoiceItemForm();
-            f.setName(p.getName());
-            f.setQuantity(item.getQuantity());
-            f.setSellingPrice(item.getSellingPrice());
-            invoiceItems.add(f);
+            InvoiceItemForm invoiceItemForm = new InvoiceItemForm();
+            invoiceItemForm.setName(product.getName());
+            invoiceItemForm.setQuantity(item.getQuantity());
+            invoiceItemForm.setSellingPrice(item.getSellingPrice());
+            invoiceItems.add(invoiceItemForm);
         }
 
         return invoiceItems;
