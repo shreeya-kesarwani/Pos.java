@@ -12,6 +12,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import static com.pos.model.constants.ErrorMessages.PRODUCT_ID_NOT_FOUND;
+
 public class InvoiceConversion {
 
     private InvoiceConversion() {}
@@ -33,8 +35,7 @@ public class InvoiceConversion {
             Product product = productById.get(productId);
 
             if (product == null) {
-                //todo: why hard coded
-                throw new ApiException("Product not found: " + productId);
+                throw new ApiException(PRODUCT_ID_NOT_FOUND.value());
             }
 
             InvoiceItemForm invoiceItemForm = new InvoiceItemForm();

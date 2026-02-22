@@ -91,7 +91,8 @@ public enum ErrorMessages {
     INVOICE_ALREADY_GENERATED("Invoice already generated"),
     SELLING_PRICE_REQUIRED("Selling price is required"),
     TSV_EMPTY("TSV file is empty"),
-    ROLE_REQUIRED("Role is required");
+    ROLE_REQUIRED("Role is required"),
+    PRODUCT_ID_NOT_FOUND("Product not found");
 
 
     private final String msg;
