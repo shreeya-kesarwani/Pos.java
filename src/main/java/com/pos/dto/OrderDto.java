@@ -107,16 +107,23 @@ public class OrderDto extends AbstractDto {
 
         Order order = orderApi.getCheck(orderId);
 
-        byte[] pdfBytes = InvoicePathUtil.tryReadInvoiceBytes(order.getInvoicePath(), orderId);
+        byte[] pdfBytes = null;
+
+        String invoicePath = order.getInvoicePath();
+        if (invoicePath != null && !invoicePath.trim().isEmpty()) {
+            // IMPORTANT: this must NOT throw if file is missing
+            pdfBytes = InvoicePathUtil.tryReadInvoiceBytes(invoicePath, orderId);
+        }
+
         if (pdfBytes == null) {
             InvoiceData data = generateInvoice(orderId);
             pdfBytes = InvoiceConversion.decodePdfBytes(data);
         }
 
         return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=" + InvoicePathUtil.invoiceFileName(orderId))
-                .contentType(MediaType.APPLICATION_PDF)
                 .body(pdfBytes);
     }
 

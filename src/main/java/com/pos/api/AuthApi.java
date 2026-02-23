@@ -32,6 +32,7 @@ public class AuthApi {
         return user;
     }
 
+    @Transactional(readOnly = true)
     public User validateLogin(String email, String password) throws ApiException {
 
         User user = userDao.findByEmail(email).orElseThrow(() -> new ApiException(INVALID_CREDENTIALS.value() + ": " + email));
@@ -41,6 +42,7 @@ public class AuthApi {
         return user;
     }
 
+    @Transactional(readOnly = true)
     public User getById(Integer userId) throws ApiException {
         User user = userDao.selectById(userId);
         if (user == null) {

@@ -1,9 +1,13 @@
 package com.pos.utils;
 
+import com.pos.exception.ApiException;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import static com.pos.model.constants.ErrorMessages.INVOICE_READ_FAILED;
 
 public final class InvoicePathUtil {
 
@@ -22,22 +26,20 @@ public final class InvoicePathUtil {
                 .resolve(invoiceFileName(orderId));
     }
 
-    public static byte[] tryReadInvoiceBytes(String invoiceDirPath, Integer orderId) {
-        if (invoiceDirPath == null || invoiceDirPath.isBlank()) return null;
-
-        Path filePath = invoiceFilePath(invoiceDirPath, orderId);
-
-        if (!Files.exists(filePath) ||
-                !Files.isRegularFile(filePath) ||
-                !Files.isReadable(filePath)) {
-            return null;
-        }
+    public static byte[] tryReadInvoiceBytes(String path, Integer orderId) throws ApiException {
+        if (path == null || path.trim().isEmpty()) return null;
 
         try {
-            byte[] bytes = Files.readAllBytes(filePath);
-            return (bytes == null || bytes.length == 0) ? null : bytes;
+            Path p = Paths.get(path);
+            if (Files.exists(p) && Files.isDirectory(p)) {
+                p = invoiceFilePath(p.toString(), orderId);
+            }
+
+            if (!Files.exists(p) || Files.isDirectory(p)) return null;
+            return Files.readAllBytes(p);
+
         } catch (IOException e) {
-            return null; // fallback to regeneration
+            throw new ApiException(INVOICE_READ_FAILED.value() + "=" + orderId);
         }
     }
 

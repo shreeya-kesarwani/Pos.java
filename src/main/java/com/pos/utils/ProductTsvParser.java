@@ -21,6 +21,9 @@ public class ProductTsvParser {
         }
 
         List<String[]> rows = TsvParser.read(file.getInputStream());
+        if (rows == null || rows.isEmpty()) {
+            throw new ApiException("Empty TSV file");
+        }
 
         try {
             validateFlexibleHeader(rows.get(0));

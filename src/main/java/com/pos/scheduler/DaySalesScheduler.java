@@ -15,7 +15,8 @@ public class DaySalesScheduler {
     @Autowired
     DaySalesApi daySalesApi;
 
-    @Scheduled(cron = "0 3 11 * * *", zone = "Asia/Kolkata")
+    @Scheduled(cron = "0 */5 * * * *", zone = "Asia/Kolkata")
+    //@Scheduled(cron = "0 3 11 * * *", zone = "Asia/Kolkata")
     public void compute() {
         try {
             daySalesApi.calculateDaySales();

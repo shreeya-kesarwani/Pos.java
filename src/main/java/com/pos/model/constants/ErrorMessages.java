@@ -92,7 +92,8 @@ public enum ErrorMessages {
     SELLING_PRICE_REQUIRED("Selling price is required"),
     TSV_EMPTY("TSV file is empty"),
     ROLE_REQUIRED("Role is required"),
-    PRODUCT_ID_NOT_FOUND("Product not found");
+    PRODUCT_ID_NOT_FOUND("Product not found"),
+    INVOICE_READ_FAILED("Failed to read invoice for orderId");
 
 
     private final String msg;

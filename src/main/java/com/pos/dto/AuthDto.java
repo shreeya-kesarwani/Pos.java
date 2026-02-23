@@ -9,6 +9,7 @@ import com.pos.model.form.LoginForm;
 import com.pos.model.form.SignupForm;
 import com.pos.pojo.User;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,7 +49,6 @@ public class AuthDto extends AbstractDto {
                 null,
                 List.of(authority)
         );
-
         SecurityContext context = SecurityContextHolder.createEmptyContext();
         context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
@@ -59,20 +59,19 @@ public class AuthDto extends AbstractDto {
         return convertUserToAuthData(user);
     }
 
-    public void changePassword(ChangePasswordForm form) throws ApiException {
+    public void changePassword(@Valid ChangePasswordForm form) throws ApiException {
         normalize(form);
-        validateForm(form);
-        Integer userId = getRequiredUserId();
+        Integer userId = requireLoggedInUserId();
         authApi.changePassword(userId, form.getCurrentPassword(), form.getNewPassword());
     }
 
     public AuthData getSessionInfo() throws ApiException {
-        Integer userId = getRequiredUserId();
+        Integer userId = requireLoggedInUserId();
         User user = authApi.getById(userId);
         return convertUserToAuthData(user);
     }
 
-    private Integer getRequiredUserId() throws ApiException {
+    private Integer requireLoggedInUserId() throws ApiException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             throw new ApiException(ErrorMessages.NOT_LOGGED_IN.value());
