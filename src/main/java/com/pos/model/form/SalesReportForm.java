@@ -5,11 +5,12 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import javax.xml.transform.Source;
 import java.time.LocalDate;
 
 @Getter
 @Setter
-public class SalesReportForm {
+public class SalesReportForm implements Source {
 
     @NotNull(message = "startDate is required")
     @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -20,4 +21,14 @@ public class SalesReportForm {
     private LocalDate endDate;
 
     private Integer clientId;
+
+    @Override
+    public void setSystemId(String systemId) {
+
+    }
+
+    @Override
+    public String getSystemId() {
+        return "";
+    }
 }

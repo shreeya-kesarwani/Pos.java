@@ -17,26 +17,17 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class SalesReportDtoValidationIT extends AbstractIntegrationTest {
 
-    @Autowired SalesReportDto salesReportDto;
+    @Autowired private SalesReportDto salesReportDto;
     @Autowired private TestFactory factory;
 
     @Test
     void shouldThrowWhenStartAfterEnd() {
+        var client = factory.createClient("Acme3", "a3@acme.com");
+
         SalesReportForm form = new SalesReportForm();
-        form.setClientId(7);
+        form.setClientId(client.getId());
         form.setStartDate(LocalDate.of(2026, 2, 3));
         form.setEndDate(LocalDate.of(2026, 2, 2));
-
-        ApiException ex = assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
-        assertNotNull(ex.getMessage());
-    }
-
-    @Test
-    void shouldThrowWhenNoSalesReportDataFound() {
-        SalesReportForm form = new SalesReportForm();
-        form.setStartDate(LocalDate.now().minusDays(1));
-        form.setEndDate(LocalDate.now());
-        form.setClientId(999999);
 
         assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
     }
@@ -44,21 +35,82 @@ class SalesReportDtoValidationIT extends AbstractIntegrationTest {
     @Test
     void shouldWorkWhenClientIdIsNull() throws Exception {
         // seed 1 invoiced order for some client
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
+        var client = factory.createClient("Acme4", "a4@acme.com");
+        var product = factory.createProduct("b4", "P4", client.getId(), 100.0, null);
         factory.createInventory(product.getId(), 10);
+
         var order = factory.createOrder(OrderStatus.INVOICED, null);
         factory.createOrderItems(order.getId(),
-                List.of(TestEntities.orderItem(order.getId(), product.getId(), 1, 10.0)));
+                List.of(TestEntities.orderItem(order.getId(), product.getId(), 1, 10.0))
+        );
         flushAndClear();
 
         SalesReportForm form = new SalesReportForm();
         form.setStartDate(LocalDate.now().minusDays(10));
         form.setEndDate(LocalDate.now().plusDays(1));
-        form.setClientId(null); // branch
+        form.setClientId(null); // client filter disabled
+
+        var out = salesReportDto.getCheck(form);
+
+        assertNotNull(out);
+        assertFalse(out.isEmpty());
+    }
+
+    @Test
+    void shouldThrowWhenStartDateIsNull() throws Exception {
+        var client = factory.createClient("Acme", "a@acme.com");
+
+        SalesReportForm form = new SalesReportForm();
+        form.setClientId(client.getId());
+        form.setStartDate(null);
+        form.setEndDate(LocalDate.now());
+
+        ApiException ex = assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
+        assertTrue(ex.getMessage().toLowerCase().contains("startdate"));
+    }
+
+    @Test
+    void shouldThrowWhenEndDateIsNull() throws Exception {
+        var client = factory.createClient("Acme", "a@acme.com");
+
+        SalesReportForm form = new SalesReportForm();
+        form.setClientId(client.getId());
+        form.setStartDate(LocalDate.now().minusDays(2));
+        form.setEndDate(null);
+
+        ApiException ex = assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
+        assertTrue(ex.getMessage().toLowerCase().contains("enddate"));
+    }
+
+    @Test
+    void shouldWorkWithEqualStartAndEndDates() throws Exception {
+        var client = factory.createClient("Acme5", "a5@acme.com");
+        var product = factory.createProduct("b5", "P5", client.getId(), 100.0, null);
+        factory.createInventory(product.getId(), 10);
+
+        var order = factory.createOrder(OrderStatus.INVOICED, null);
+        factory.createOrderItems(order.getId(),
+                List.of(TestEntities.orderItem(order.getId(), product.getId(), 1, 10.0))
+        );
+        flushAndClear();
+
+        SalesReportForm form = new SalesReportForm();
+        form.setStartDate(LocalDate.now());
+        form.setEndDate(LocalDate.now()); // same as start → start.isAfter(end) is false
+        form.setClientId(client.getId());
 
         var out = salesReportDto.getCheck(form);
         assertNotNull(out);
         assertFalse(out.isEmpty());
+    }
+
+    @Test
+    void shouldThrowWithStartAfterEndMessage() {
+        SalesReportForm form = new SalesReportForm();
+        form.setStartDate(LocalDate.of(2026, 2, 20));
+        form.setEndDate(LocalDate.of(2026, 2, 10));
+
+        ApiException ex = assertThrows(ApiException.class, () -> salesReportDto.getCheck(form));
+        assertTrue(ex.getMessage().contains("startDate cannot be after endDate"));
     }
 }

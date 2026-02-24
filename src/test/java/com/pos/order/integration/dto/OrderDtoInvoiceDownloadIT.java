@@ -7,11 +7,11 @@ import com.pos.exception.ApiException;
 import com.pos.model.data.InvoiceData;
 import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
+import com.pos.pojo.Order;
 import com.pos.setup.AbstractIntegrationTest;
 import com.pos.setup.TestFactory;
 import com.pos.utils.InvoicePathUtil;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.ResponseEntity;
@@ -22,75 +22,48 @@ import java.util.Base64;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
 
-    @Autowired OrderDto orderDto;
-    @Autowired OrderApi orderApi;
-    @Autowired TestFactory factory;
+    private static final String INVOICE_DIR = "/tmp/invoices";
 
-    @MockBean InvoiceClient invoiceClient; // external dependency ONLY
+    @Autowired private OrderDto orderDto;
+    @Autowired private OrderApi orderApi;
+    @Autowired private TestFactory factory;
+
+    // external dependency ONLY
+    @MockBean private InvoiceClient invoiceClient;
 
     @Test
-    void shouldDownloadInvoice_useExistingBytesWithoutCallingInvoiceClient() throws Exception {
-        // Arrange: create product + inventory + order
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 50);
-        flushAndClear();
+    void shouldDownloadInvoice_useExistingFileAndNotCallInvoiceClient() throws Exception {
+        Integer orderId = createOrderWithOneItem("b1");
 
-        OrderItemForm item = new OrderItemForm();
-        item.setBarcode("b1");
-        item.setQuantity(1);
-        item.setSellingPrice(5.0);
-
-        OrderForm orderForm = new OrderForm();
-        orderForm.setItems(List.of(item));
-
-        Integer orderId = orderDto.create(orderForm);
-        flushAndClear();
-
-        // Create an existing invoice file and attach it to order
+        // create invoice file
         byte[] existingBytes = "existing-invoice".getBytes();
-
-        // Save invoice in the same dir OrderDto uses (/tmp/invoices) by giving directory path
-        String invoiceDir = "/tmp/invoices";
-        Files.createDirectories(Path.of(invoiceDir));
-        Path invoiceFile = InvoicePathUtil.invoiceFilePath(invoiceDir, orderId);
+        Files.createDirectories(Path.of(INVOICE_DIR));
+        Path invoiceFile = InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId);
         Files.write(invoiceFile, existingBytes);
 
-        // Attach path via real internal API (no mocks)
-        orderApi.generateInvoice(orderId, invoiceDir);
+        // attach invoicePath WITHOUT changing status logic: update entity directly
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath(INVOICE_DIR); // directory is allowed; util resolves INV-<id>.pdf
         flushAndClear();
 
-        // Act
         ResponseEntity<byte[]> resp = orderDto.downloadInvoice(orderId);
 
-        // Assert: returned bytes are from existing file
         assertNotNull(resp.getBody());
         assertArrayEquals(existingBytes, resp.getBody());
-
-        // Assert: should NOT call external invoice client
-        Mockito.verify(invoiceClient, never()).generate(any());
+        verify(invoiceClient, never()).generate(any());
     }
 
     @Test
     void shouldGenerateInvoiceWhenDownloadingWithoutExistingPath() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 10);
+        Integer orderId = createOrderWithOneItem("b2");
 
-        OrderItemForm item = new OrderItemForm();
-        item.setBarcode("b1");
-        item.setQuantity(1);
-        item.setSellingPrice(10.0);
-
-        OrderForm form = new OrderForm();
-        form.setItems(List.of(item));
-
-        Integer orderId = orderDto.create(form);
-        flushAndClear();
+        // ensure no leftover file
+        Files.deleteIfExists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId));
 
         byte[] pdf = "pdf".getBytes();
         InvoiceData data = new InvoiceData();
@@ -99,45 +72,213 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
 
         when(invoiceClient.generate(any())).thenReturn(data);
 
-        var resp = orderDto.downloadInvoice(orderId);
+        ResponseEntity<byte[]> resp = orderDto.downloadInvoice(orderId);
 
         assertNotNull(resp.getBody());
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
+
+        // also file should now exist because generateInvoice() stores it
+        assertTrue(Files.exists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId)));
     }
 
     @Test
-    void shouldRegenerateInvoiceWhenFileMissing() throws Exception {
-        // generate once normally
-        // delete saved file manually
-        // call download again
-        // verify invoiceClient called
+    void shouldGenerateInvoiceWhenInvoicePathPresentButFileMissing() throws Exception {
+        Integer orderId = createOrderWithOneItem("b3");
+
+        // set invoicePath non-empty, but ensure file does NOT exist
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath(INVOICE_DIR);   // non-empty path triggers tryRead branch
+        flushAndClear();
+
+        Files.deleteIfExists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId));
+
+        byte[] pdf = "regen".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        ResponseEntity<byte[]> resp = orderDto.downloadInvoice(orderId);
+
+        assertNotNull(resp.getBody());
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
     }
 
     @Test
-    void shouldThrowWhenInvoicePathPresentButFileMissing() throws Exception {
-        // Create order with items
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 10);
+    void shouldThrowWhenDownloadInvoiceOrderIdNull() {
+        ApiException ex = assertThrows(ApiException.class, () -> orderDto.downloadInvoice(null));
+        assertTrue(ex.getMessage().contains("Order id is required"));
+    }
+
+    @Test
+    void shouldRegenerateWhenInvoicePathIsBlank() throws Exception {
+        Integer orderId = createOrderWithOneItem("b4");
+
+        // set blank invoicePath → trim().isEmpty() is true → skip tryRead → regenerate
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("   ");
+        flushAndClear();
+
+        byte[] pdf = "regen-blank".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        ResponseEntity<byte[]> resp = orderDto.downloadInvoice(orderId);
+
+        assertNotNull(resp.getBody());
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
+    }
+
+    @Test
+    void shouldGenerateWhenInvoicePathBlankString() throws Exception {
+        Integer orderId = createOrderWithOneItem("bb1");
+
+        // set invoicePath = "   " (non-null but blank)
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("   ");
+        flushAndClear();
+
+        byte[] pdf = "blank-path".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
+    }
+
+    @Test
+    void downloadInvoice_readsExistingFileWhenInvoicePathPresent() throws Exception {
+        Integer orderId = createOrderWithOneItem("x1");
+
+        Files.createDirectories(Path.of("/tmp/invoices"));
+        byte[] existing = "hello".getBytes();
+        Path file = InvoicePathUtil.invoiceFilePath("/tmp/invoices", orderId);
+        Files.write(file, existing);
+
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("/tmp/invoices");
+        flushAndClear();
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(existing, resp.getBody());
+        verify(invoiceClient, never()).generate(any());
+    }
+
+    @Test
+    void downloadInvoice_regeneratesWhenInvoicePathPresentButFileMissing() throws Exception {
+        Integer orderId = createOrderWithOneItem("x2");
+
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("/tmp/invoices");
+        flushAndClear();
+
+        Files.deleteIfExists(InvoicePathUtil.invoiceFilePath("/tmp/invoices", orderId));
+
+        byte[] pdf = "regen".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
+    }
+
+    @Test
+    void downloadInvoice_generatesWhenInvoicePathIsNull() throws Exception {
+        Integer orderId = createOrderWithOneItem("x3");
+
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath(null);
+        flushAndClear();
+
+        byte[] pdf = "new".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
+    }
+
+    @Test
+    void downloadInvoice_throwsWhenOrderIdNull() {
+        assertThrows(ApiException.class, () -> orderDto.downloadInvoice(null));
+    }
+
+    @Test
+    void downloadInvoice_whenInvoicePathEmptyString_shouldGenerate() throws Exception {
+        Integer orderId = createOrderWithOneItem("z1");
+
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("");   // empty string branch
+        flushAndClear();
+
+        byte[] pdf = "x".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(pdf, resp.getBody());
+    }
+
+    @Test
+    void downloadInvoice_whenInvoicePathBlank_shouldGenerate() throws Exception {
+        Integer orderId = createOrderWithOneItem("bblank");
+
+        Order order = orderApi.getCheck(orderId);
+        order.setInvoicePath("   "); // blank branch
+        flushAndClear();
+
+        byte[] pdf = "x".getBytes();
+        InvoiceData data = new InvoiceData();
+        data.setOrderId(orderId);
+        data.setBase64Pdf(Base64.getEncoder().encodeToString(pdf));
+        when(invoiceClient.generate(any())).thenReturn(data);
+
+        var resp = orderDto.downloadInvoice(orderId);
+
+        assertArrayEquals(pdf, resp.getBody());
+    }
+
+    // ---------- helpers ----------
+
+    private Integer createOrderWithOneItem(String barcode) throws Exception {
+        var client = factory.createClient("Acme-" + barcode, barcode + "@acme.com");
+        var product = factory.createProduct(barcode, "P-" + barcode, client.getId(), 100.0, null);
+        factory.createInventory(product.getId(), 50);
+        flushAndClear();
 
         OrderItemForm item = new OrderItemForm();
-        item.setBarcode("b1");
+        item.setBarcode(barcode);
         item.setQuantity(1);
-        item.setSellingPrice(10.0);
+        item.setSellingPrice(5.0);
 
-        OrderForm form = new OrderForm();
-        form.setItems(List.of(item));
+        OrderForm orderForm = new OrderForm();
+        orderForm.setItems(List.of(item));
 
-        Integer orderId = orderDto.create(form);
+        Integer orderId = orderDto.create(orderForm);
         flushAndClear();
-
-        // Manually attach invoice path (simulate already generated)
-        orderApi.generateInvoice(orderId, "/tmp/invoices"); // directory, file likely missing
-        flushAndClear();
-
-        // Because API treats invoice as already generated, regen would attempt attach again → should throw
-        assertThrows(ApiException.class, () -> orderDto.downloadInvoice(orderId));
-
-        // and invoiceClient should NOT be called
-        verify(invoiceClient, never()).generate(any());
+        return orderId;
     }
 }

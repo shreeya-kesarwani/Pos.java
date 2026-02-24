@@ -1,6 +1,8 @@
 package com.pos.order.integration.dto;
 
 import com.pos.dto.OrderDto;
+import com.pos.exception.ApiException;
+import com.pos.model.constants.OrderStatus;
 import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
 import com.pos.setup.AbstractIntegrationTest;
@@ -62,5 +64,32 @@ class OrderDtoItemsIT extends AbstractIntegrationTest {
         assertEquals(1, out.size());
         assertEquals("b1", out.getFirst().getBarcode());
         assertEquals("P1", out.getFirst().getProductName());
+    }
+
+    @Test
+    void shouldThrowWhenOrderIdNull() {
+        assertThrows(ApiException.class, () -> orderDto.getItems(null));
+    }
+
+    @Test
+    void shouldReturnEmptyWhenOrderHasNoItems() throws Exception {
+        var order = factory.createOrder(OrderStatus.CREATED, null);
+        flushAndClear();
+
+        var out = orderDto.getItems(order.getId());
+        assertNotNull(out);
+        assertTrue(out.isEmpty());
+    }
+
+    @Test
+    void shouldThrowWhenOrderItemProductMissingInDb() throws Exception {
+        // Create an order + insert an orderItem with non-existent productId
+        var order = factory.createOrder(com.pos.model.constants.OrderStatus.CREATED, null);
+        factory.createOrderItems(order.getId(),
+                List.of(com.pos.setup.TestEntities.orderItem(order.getId(), 999999, 1, 10.0))
+        );
+        flushAndClear();
+
+        assertThrows(ApiException.class, () -> orderDto.getItems(order.getId()));
     }
 }
