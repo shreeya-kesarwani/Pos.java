@@ -185,4 +185,63 @@ class AuthDtoTest {
         ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
         assertEquals(ErrorMessages.NOT_LOGGED_IN.value(), ex.getMessage());
     }
+
+    @Test
+    void getSessionInfoWorksWhenPrincipalIsStringId() throws Exception {
+        SignupForm signup = new SignupForm();
+        signup.setEmail("string@id.com");
+        signup.setPassword("p");
+        authDto.signup(signup);
+
+        Integer userId = userDao.findByEmail("string@id.com").orElseThrow().getId();
+        assertNotNull(userId);
+
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        String.valueOf(userId),
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
+                )
+        );
+
+        AuthData out = authDto.getSessionInfo();
+        assertNotNull(out);
+        assertEquals("string@id.com", out.getEmail());
+    }
+
+    @Test
+    void getSessionInfoThrowsWhenPrincipalStringIsNotInteger() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        "not-a-number",
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
+                )
+        );
+
+        ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
+        assertEquals(ErrorMessages.INVALID_SESSION_PRINCIPAL.value(), ex.getMessage());
+    }
+
+    @Test
+    void getSessionInfoThrowsWhenPrincipalIsUnexpectedType() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(
+                        new Object(),
+                        null,
+                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
+                )
+        );
+
+        ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
+        assertEquals(ErrorMessages.INVALID_SESSION_PRINCIPAL.value(), ex.getMessage());
+    }
+
+    @Test
+    void getSessionInfoThrowsWhenAuthenticationMissing() {
+        SecurityContextHolder.clearContext();
+
+        ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
+        assertEquals(ErrorMessages.NOT_LOGGED_IN.value(), ex.getMessage());
+    }
 }

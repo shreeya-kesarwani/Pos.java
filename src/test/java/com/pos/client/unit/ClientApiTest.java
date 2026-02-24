@@ -19,13 +19,13 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ClientApiTest {
-
+//todo: setup data before each calls testfactory gets an entity sets it
     @InjectMocks
     private ClientApi clientApi;
 
     @Mock
     private ClientDao clientDao;
-
+//todo: test factory class ->eg. returns ready entity can be used for update methods -> central class -> fulfill needs required for tests like order creation
     @Test
     void getShouldDelegateToDao() {
         Client c = new Client();

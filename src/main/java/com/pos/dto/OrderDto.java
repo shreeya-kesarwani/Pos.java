@@ -46,6 +46,8 @@ public class OrderDto extends AbstractDto {
     public PaginatedResponse<OrderData> search(OrderSearchForm form) throws ApiException {
         normalize(form);
         validateForm(form);
+        if (form.getPageNumber() == null) form.setPageNumber(0);
+        if (form.getPageSize() == null) form.setPageSize(10);
 
         if (form.getStart() != null && form.getEnd() != null && form.getStart().isAfter(form.getEnd())) {
             throw new ApiException(INVALID_DATE_RANGE.value());
