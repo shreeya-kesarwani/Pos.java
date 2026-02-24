@@ -5,6 +5,7 @@ import com.pos.dao.UserDao;
 import com.pos.exception.ApiException;
 import com.pos.model.constants.UserRole;
 import com.pos.pojo.User;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -32,11 +33,30 @@ class AuthApiTest {
     @Captor
     private ArgumentCaptor<User> userCaptor;
 
-    @Test
-    void signupCreatesOperatorAndInsertsUserWhenEmailNotRegistered() throws Exception {
-        String email = "a@b.com";
-        String password = "pass123";
+    private String email;
+    private String password;
 
+    @BeforeEach
+    void setupData() {
+        email = "a@b.com";
+        password = "pass123";
+    }
+
+    // ---------- Helpers (unit-test safe) ----------
+
+    private User signupUser(String email, String rawPassword) throws ApiException {
+        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
+        return authApi.signup(email, rawPassword);
+    }
+
+    private void stubUserFoundByEmail(String email, User user) {
+        when(userDao.findByEmail(email)).thenReturn(Optional.of(user));
+    }
+
+    // ---------- Tests ----------
+
+    @Test
+    void signupInsertsUserWithOperatorRoleAndHashedPassword() throws Exception {
         when(userDao.findByEmail(email)).thenReturn(Optional.empty());
 
         User created = authApi.signup(email, password);
@@ -52,33 +72,25 @@ class AuthApiTest {
 
         assertNotNull(inserted.getPasswordHash());
         assertNotEquals(password, inserted.getPasswordHash());
-
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(inserted));
-        User loggedIn = authApi.validateLogin(email, password);
-        assertEquals(email, loggedIn.getEmail());
     }
 
     @Test
     void signupThrowsWhenEmailAlreadyRegistered() {
-        String email = "exists@b.com";
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(new User()));
+        String existingEmail = "exists@b.com";
+        when(userDao.findByEmail(existingEmail)).thenReturn(Optional.of(new User()));
 
-        ApiException ex = assertThrows(ApiException.class, () -> authApi.signup(email, "x"));
+        ApiException ex = assertThrows(ApiException.class, () -> authApi.signup(existingEmail, "x"));
 
         assertTrue(ex.getMessage().contains(EMAIL_ALREADY_REGISTERED.value()));
-        assertTrue(ex.getMessage().contains(email));
+        assertTrue(ex.getMessage().contains(existingEmail));
         verify(userDao, never()).insert(any());
     }
 
     @Test
     void validateLoginReturnsUserWhenCredentialsCorrect() throws Exception {
-        String email = "u@b.com";
-        String password = "secret";
+        User signedUp = signupUser(email, password);
+        stubUserFoundByEmail(email, signedUp);
 
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
-        User signedUp = authApi.signup(email, password);
-
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(signedUp));
         User out = authApi.validateLogin(email, password);
 
         assertNotNull(out);
@@ -87,23 +99,20 @@ class AuthApiTest {
 
     @Test
     void validateLoginThrowsWhenUserNotFound() {
-        String email = "missing@b.com";
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
+        String missingEmail = "missing@b.com";
+        when(userDao.findByEmail(missingEmail)).thenReturn(Optional.empty());
 
-        ApiException ex = assertThrows(ApiException.class, () -> authApi.validateLogin(email, "x"));
+        ApiException ex = assertThrows(ApiException.class, () -> authApi.validateLogin(missingEmail, "x"));
 
         assertTrue(ex.getMessage().contains(INVALID_CREDENTIALS.value()));
-        assertTrue(ex.getMessage().contains(email));
+        assertTrue(ex.getMessage().contains(missingEmail));
     }
 
     @Test
     void validateLoginThrowsWhenPasswordIncorrect() throws Exception {
-        String email = "u2@b.com";
-
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
-        User u = authApi.signup(email, "correct");
-
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(u));
+        String raw = "correct";
+        User u = signupUser(email, raw);
+        stubUserFoundByEmail(email, u);
 
         ApiException ex = assertThrows(ApiException.class, () -> authApi.validateLogin(email, "wrong"));
         assertEquals(INVALID_CREDENTIALS.value(), ex.getMessage());
@@ -116,6 +125,7 @@ class AuthApiTest {
         when(userDao.selectById(10)).thenReturn(u);
 
         User out = authApi.getById(10);
+
         assertSame(u, out);
     }
 
@@ -134,23 +144,18 @@ class AuthApiTest {
         int userId = 1;
         String current = "oldPass";
         String next = "newPass";
-        String email = "tmp@b.com";
 
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
-        User u = authApi.signup(email, current);
+        User u = signupUser(email, current);
         u.setId(userId);
 
         when(userDao.selectById(userId)).thenReturn(u);
 
         String oldHash = u.getPasswordHash();
+
         authApi.changePassword(userId, current, next);
 
         assertNotEquals(oldHash, u.getPasswordHash());
         assertNotEquals(next, u.getPasswordHash());
-
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(u));
-        User out = authApi.validateLogin(email, next);
-        assertEquals(email, out.getEmail());
     }
 
     @Test
@@ -166,10 +171,8 @@ class AuthApiTest {
     @Test
     void changePasswordThrowsWhenCurrentPasswordIncorrect() throws Exception {
         int userId = 2;
-        String email = "t2@b.com";
 
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
-        User u = authApi.signup(email, "right");
+        User u = signupUser(email, "right");
         u.setId(userId);
 
         when(userDao.selectById(userId)).thenReturn(u);

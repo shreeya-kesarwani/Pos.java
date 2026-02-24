@@ -6,6 +6,8 @@ import com.pos.exception.ApiException;
 import com.pos.flow.ProductFlow;
 import com.pos.pojo.Client;
 import com.pos.pojo.Product;
+import com.pos.setup.UnitTestFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -23,78 +25,69 @@ class ProductFlowTest {
     @InjectMocks
     private ProductFlow productFlow;
 
-    @Mock
-    private ProductApi productApi;
+    @Mock private ProductApi productApi;
+    @Mock private ClientApi clientApi;
 
-    @Mock
-    private ClientApi clientApi;
+    private Integer clientId;
+    private Client client;
 
-    // ---------------- add ----------------
+    @BeforeEach
+    void setupData() {
+        clientId = 10;
+        client = UnitTestFactory.client(clientId, "c", "c@mail");
+    }
 
     @Test
     void add_shouldValidateClient_thenDelegateToProductApiAdd() throws ApiException {
-        // Setup
-        Product p = new Product();
-        p.setClientId(10);
+        Product p = UnitTestFactory.product(null, "BC", clientId, null, null, null);
+        when(clientApi.getCheck(clientId)).thenReturn(client);
 
-        when(clientApi.getCheck(10)).thenReturn(new Client());
-
-        // Execute
         productFlow.add(p);
 
-        // Verify
-        verify(clientApi).getCheck(10);
+        verify(clientApi).getCheck(clientId);
         verify(productApi).add(p);
         verifyNoMoreInteractions(clientApi, productApi);
     }
 
     @Test
     void add_shouldNotCallProductApi_whenClientValidationFails() throws ApiException {
-        // Setup
-        Product p = new Product();
-        p.setClientId(10);
+        Product p = UnitTestFactory.product(null, "BC", clientId, null, null, null);
+        when(clientApi.getCheck(clientId)).thenThrow(new ApiException("client missing"));
 
-        when(clientApi.getCheck(10)).thenThrow(new ApiException("client missing"));
-
-        // Execute & Verify
         assertThrows(ApiException.class, () -> productFlow.add(p));
 
-        verify(clientApi).getCheck(10);
+        verify(clientApi).getCheck(clientId);
         verifyNoInteractions(productApi);
         verifyNoMoreInteractions(clientApi);
     }
 
-    // ---------------- addBulk ----------------
-
     @Test
     void addBulk_shouldValidateClient_thenDelegateToProductApiAddBulk() throws ApiException {
-        // Setup
-        Integer clientId = 5;
-        List<Product> products = List.of(new Product(), new Product());
+        Integer bulkClientId = 5;
+        List<Product> products = List.of(
+                UnitTestFactory.productWithBarcode("A"),
+                UnitTestFactory.productWithBarcode("B")
+        );
 
-        when(clientApi.getCheck(clientId)).thenReturn(new Client());
+        when(clientApi.getCheck(bulkClientId)).thenReturn(UnitTestFactory.client(bulkClientId, "x", "x@mail"));
 
-        // Execute
-        productFlow.addBulk(products, clientId);
+        productFlow.addBulk(products, bulkClientId);
 
-        // Verify
-        verify(clientApi).getCheck(clientId);
+        verify(clientApi).getCheck(bulkClientId);
         verify(productApi).addBulk(products);
         verifyNoMoreInteractions(clientApi, productApi);
     }
 
     @Test
     void addBulk_shouldNotCallProductApi_whenClientValidationFails() throws ApiException {
-        // Setup
-        Integer clientId = 5;
-        List<Product> products = List.of(new Product());
+        Integer bulkClientId = 5;
+        List<Product> products = List.of(UnitTestFactory.productWithBarcode("A"));
 
-        when(clientApi.getCheck(clientId)).thenThrow(new ApiException("client missing"));
+        when(clientApi.getCheck(bulkClientId)).thenThrow(new ApiException("client missing"));
 
-        // Execute & Verify
-        assertThrows(ApiException.class, () -> productFlow.addBulk(products, clientId));
+        assertThrows(ApiException.class, () -> productFlow.addBulk(products, bulkClientId));
 
-        verify(clientApi).getCheck(clientId);
+        verify(clientApi).getCheck(bulkClientId);
         verifyNoInteractions(productApi);
         verifyNoMoreInteractions(clientApi);
     }

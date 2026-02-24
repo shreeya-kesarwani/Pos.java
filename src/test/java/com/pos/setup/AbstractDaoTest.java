@@ -1,5 +1,6 @@
 package com.pos.setup;
 
+import com.pos.dao.*;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
@@ -18,7 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 @ActiveProfiles("test")
 @Execution(ExecutionMode.SAME_THREAD)
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(TestContainerConfig.class)
+@Import({
+        TestFactory.class,
+        ClientDao.class,
+        ProductDao.class,
+        InventoryDao.class,
+        UserDao.class,
+        OrderDao.class,
+        OrderItemDao.class,
+        DaySalesDao.class,
+        SalesReportDao.class,
+        TestContainerConfig.class
+})
 public abstract class AbstractDaoTest {
 
     @Autowired

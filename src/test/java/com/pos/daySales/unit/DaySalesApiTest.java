@@ -4,6 +4,7 @@ import com.pos.api.DaySalesApi;
 import com.pos.dao.DaySalesDao;
 import com.pos.exception.ApiException;
 import com.pos.pojo.DaySales;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -37,6 +38,15 @@ class DaySalesApiTest {
     private ArgumentCaptor<DaySales> daySalesCaptor;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
+    private static final ZoneId UTC = ZoneId.of("UTC");
+
+    private ZonedDateTime utcInputLateNight;
+
+    @BeforeEach
+    void setupData() {
+        // A stable input that crosses day boundaries in some zones
+        utcInputLateNight = ZonedDateTime.of(2026, 2, 15, 23, 30, 0, 0, UTC);
+    }
 
     @Test
     void getDaySalesShouldThrowWhenDateNull() {
@@ -47,23 +57,24 @@ class DaySalesApiTest {
 
     @Test
     void getDaySalesShouldReturnEmptyListWhenDaoReturnsNull() throws ApiException {
-        ZonedDateTime input = ZonedDateTime.of(2026, 2, 15, 23, 30, 0, 0, ZoneId.of("UTC"));
         when(daySalesDao.selectInRange(any(), any())).thenReturn(null);
 
-        List<DaySales> out = daySalesApi.getDaySales(input);
+        List<DaySales> out = daySalesApi.getDaySales(utcInputLateNight);
 
         assertNotNull(out);
         assertTrue(out.isEmpty());
 
-        // ✅ DAO expects 2 params
         verify(daySalesDao).selectInRange(zdtCaptor.capture(), zdtCaptor.capture());
-        ZonedDateTime start = zdtCaptor.getAllValues().get(0);
-        ZonedDateTime end = zdtCaptor.getAllValues().get(1);
+        List<ZonedDateTime> captured = zdtCaptor.getAllValues();
+        ZonedDateTime start = captured.get(0);
+        ZonedDateTime end = captured.get(1);
 
         assertEquals(IST, start.getZone());
         assertEquals(IST, end.getZone());
         assertEquals(start.toLocalDate().atStartOfDay(IST), start);
         assertEquals(start.plusDays(1), end);
+
+        verifyNoMoreInteractions(daySalesDao);
     }
 
     @Test
@@ -77,6 +88,7 @@ class DaySalesApiTest {
         assertSame(rows, out);
         verify(daySalesDao).selectInRange(any(), any());
         verify(daySalesDao, never()).insert(any());
+        verifyNoMoreInteractions(daySalesDao);
     }
 
     @Test
@@ -87,8 +99,9 @@ class DaySalesApiTest {
         daySalesApi.calculateDaySales();
 
         verify(daySalesDao).selectInvoicedSalesAggregatesForDay(zdtCaptor.capture(), zdtCaptor.capture());
-        ZonedDateTime start = zdtCaptor.getAllValues().get(0);
-        ZonedDateTime end = zdtCaptor.getAllValues().get(1);
+        List<ZonedDateTime> captured = zdtCaptor.getAllValues();
+        ZonedDateTime start = captured.get(0);
+        ZonedDateTime end = captured.get(1);
 
         assertEquals(IST, start.getZone());
         assertEquals(IST, end.getZone());
@@ -103,6 +116,8 @@ class DaySalesApiTest {
         assertEquals(2, inserted.getInvoicedOrdersCount());
         assertEquals(5, inserted.getInvoicedItemsCount());
         assertEquals(250.75, inserted.getTotalRevenue());
+
+        verifyNoMoreInteractions(daySalesDao);
     }
 
     @Test
@@ -112,6 +127,8 @@ class DaySalesApiTest {
 
         daySalesApi.calculateDaySales();
 
+        verify(daySalesDao).selectInvoicedSalesAggregatesForDay(any(), any());
         verify(daySalesDao).insert(any(DaySales.class));
+        verifyNoMoreInteractions(daySalesDao);
     }
 }

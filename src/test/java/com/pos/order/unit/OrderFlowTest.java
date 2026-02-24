@@ -6,6 +6,8 @@ import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.flow.OrderFlow;
 import com.pos.pojo.OrderItem;
+import com.pos.setup.UnitTestFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
@@ -18,6 +20,7 @@ import java.util.List;
 import static com.pos.model.constants.ErrorMessages.NO_ORDER_ITEMS_FOUND;
 import static com.pos.model.constants.ErrorMessages.PRODUCT_NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,9 +33,17 @@ class OrderFlowTest {
     @Mock private InventoryApi inventoryApi;
     @Mock private ProductApi productApi;
 
+    private OrderItem i1;
+    private OrderItem i2;
+
+    @BeforeEach
+    void setupData() {
+        i1 = UnitTestFactory.orderItem(101, 2, 50.0);
+        i2 = UnitTestFactory.orderItem(202, 1, 10.0);
+    }
+
     @Test
     void createOrder_shouldThrow_whenItemsNull() {
-        // Execute & Verify
         ApiException ex = assertThrows(ApiException.class, () -> orderFlow.createOrder(null));
         assertTrue(ex.getMessage().contains(NO_ORDER_ITEMS_FOUND.value()));
         verifyNoInteractions(orderApi, inventoryApi, productApi);
@@ -40,7 +51,6 @@ class OrderFlowTest {
 
     @Test
     void createOrder_shouldThrow_whenItemsEmpty() {
-        // Execute & Verify
         ApiException ex = assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of()));
         assertTrue(ex.getMessage().contains(NO_ORDER_ITEMS_FOUND.value()));
         verifyNoInteractions(orderApi, inventoryApi, productApi);
@@ -48,37 +58,20 @@ class OrderFlowTest {
 
     @Test
     void createOrder_shouldThrow_whenAnyItemHasNullProductId_andStopProcessing() {
-        // Setup
-        OrderItem item = new OrderItem();
-        item.setProductId(null);
-        item.setQuantity(2);
-        item.setSellingPrice(10.0);
+        OrderItem item = UnitTestFactory.orderItem(null, 2, 10.0);
 
-        // Execute & Verify
         ApiException ex = assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(item)));
         assertTrue(ex.getMessage().contains(PRODUCT_NOT_FOUND.value()));
+
         verifyNoInteractions(productApi, inventoryApi, orderApi);
     }
 
     @Test
     void createOrder_shouldValidatePriceAndReduceInventory_forEachItem_thenCreateOrder() throws ApiException {
-        // Setup
-        OrderItem i1 = new OrderItem();
-        i1.setProductId(101);
-        i1.setQuantity(2);
-        i1.setSellingPrice(50.0);
-
-        OrderItem i2 = new OrderItem();
-        i2.setProductId(202);
-        i2.setQuantity(1);
-        i2.setSellingPrice(10.0);
-
         when(orderApi.create(List.of(i1, i2))).thenReturn(999);
 
-        // Execute
         Integer orderId = orderFlow.createOrder(List.of(i1, i2));
 
-        // Verify
         assertEquals(999, orderId);
 
         InOrder inOrder = inOrder(productApi, inventoryApi, orderApi);
@@ -96,39 +89,30 @@ class OrderFlowTest {
 
     @Test
     void createOrder_shouldNotCallOrderCreate_whenValidationFails() throws ApiException {
-        // Setup
-        OrderItem i1 = new OrderItem();
-        i1.setProductId(101);
-        i1.setQuantity(2);
-        i1.setSellingPrice(5000.0);
+        OrderItem expensive = UnitTestFactory.orderItem(101, 2, 5000.0);
 
         doThrow(new ApiException("selling price exceeds mrp"))
                 .when(productApi).validateSellingPrice(101, 5000.0);
 
-        // Execute & Verify
-        assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(i1)));
+        assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(expensive)));
 
         verify(productApi).validateSellingPrice(101, 5000.0);
         verifyNoInteractions(inventoryApi);
         verify(orderApi, never()).create(anyList());
+        verifyNoMoreInteractions(productApi, orderApi);
     }
 
     @Test
     void createOrder_shouldNotCallOrderCreate_whenInventoryReductionFails() throws ApiException {
-        // Setup
-        OrderItem i1 = new OrderItem();
-        i1.setProductId(101);
-        i1.setQuantity(2);
-        i1.setSellingPrice(50.0);
-
         doThrow(new ApiException("insufficient inventory"))
                 .when(inventoryApi).reduceInventory(101, 2);
 
-        // Execute & Verify
         assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(i1)));
 
         verify(productApi).validateSellingPrice(101, 50.0);
         verify(inventoryApi).reduceInventory(101, 2);
         verify(orderApi, never()).create(anyList());
+
+        verifyNoMoreInteractions(productApi, inventoryApi, orderApi);
     }
 }

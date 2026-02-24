@@ -1,10 +1,11 @@
 package com.pos.auth.integration;
 
 import com.pos.dao.UserDao;
-import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestEntities;
 import com.pos.model.constants.UserRole;
 import com.pos.pojo.User;
+import com.pos.setup.AbstractDaoTest;
+import com.pos.setup.TestFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -13,21 +14,31 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import(UserDao.class)
+@Import({UserDao.class, TestFactory.class})
 class UserDaoTest extends AbstractDaoTest {
 
     @Autowired
     private UserDao userDao;
 
+    @Autowired
+    private TestFactory testFactory;
+
+    private User operatorUser;
+    private User supervisorUser;
+
+    @BeforeEach
+    void setupData() {
+        operatorUser = testFactory.createUser("a@b.com", "hash", UserRole.OPERATOR);
+        supervisorUser = testFactory.createUser("id@b.com", "hash", UserRole.SUPERVISOR);
+        em.clear();
+    }
+
     @Test
     void findByEmailReturnsUserWhenExists() {
-        User u = persist(TestEntities.user("a@b.com", "hash", UserRole.OPERATOR));
-        em.clear();
-
         Optional<User> out = userDao.findByEmail("a@b.com");
 
         assertTrue(out.isPresent());
-        assertEquals(u.getId(), out.get().getId());
+        assertEquals(operatorUser.getId(), out.get().getId());
         assertEquals("a@b.com", out.get().getEmail());
         assertEquals(UserRole.OPERATOR, out.get().getRole());
     }
@@ -52,14 +63,12 @@ class UserDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByIdReturnsUserWhenExists() {
-        User u = persist(TestEntities.user("id@b.com", "hash", UserRole.SUPERVISOR));
-        em.clear();
-
-        User out = userDao.selectById(u.getId());
+        User out = userDao.selectById(supervisorUser.getId());
 
         assertNotNull(out);
-        assertEquals(u.getId(), out.getId());
+        assertEquals(supervisorUser.getId(), out.getId());
         assertEquals("id@b.com", out.getEmail());
+        assertEquals(UserRole.SUPERVISOR, out.getRole());
     }
 
     @Test
