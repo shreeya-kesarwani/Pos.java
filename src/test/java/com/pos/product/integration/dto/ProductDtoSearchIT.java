@@ -2,17 +2,14 @@ package com.pos.product.integration.dto;
 
 import com.pos.dto.ProductDto;
 import com.pos.model.form.ProductSearchForm;
-import com.pos.setup.AbstractIntegrationTest;
-import com.pos.setup.TestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ProductDtoSearchIT extends AbstractIntegrationTest {
+class ProductDtoSearchIT extends AbstractProductDtoIntegrationTest {
 
     @Autowired ProductDto productDto;
-    @Autowired TestFactory factory;
 
     @Test
     void shouldSearchProducts_happyFlow() throws Exception {
@@ -22,7 +19,7 @@ class ProductDtoSearchIT extends AbstractIntegrationTest {
         flushAndClear();
 
         ProductSearchForm form = new ProductSearchForm();
-        form.setName("  ph  ");          // should match "Phone"
+        form.setName("  ph  "); // should match "Phone"
         form.setBarcode(null);
         form.setClientId(client.getId());
         form.setPageNumber(0);

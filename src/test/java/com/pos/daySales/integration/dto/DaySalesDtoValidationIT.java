@@ -14,10 +14,18 @@ class DaySalesDtoValidationIT extends AbstractIntegrationTest {
     @Autowired DaySalesDto daySalesDto;
 
     @Test
+    void shouldThrowWhenFormIsNull() {
+        assertThrows(IllegalArgumentException.class, () -> daySalesDto.get(null));
+    }
+
+    @Test
     void shouldThrowWhenStartDateMissing() {
         DaySalesForm form = new DaySalesForm(); // startDate null
 
         ApiException ex = assertThrows(ApiException.class, () -> daySalesDto.get(form));
+
+        // Bean Validation message can vary slightly, so keep it robust:
         assertNotNull(ex.getMessage());
+        assertTrue(ex.getMessage().toLowerCase().contains("must not be null"));
     }
 }

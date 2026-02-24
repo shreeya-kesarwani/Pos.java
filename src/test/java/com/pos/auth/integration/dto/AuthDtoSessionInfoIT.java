@@ -9,7 +9,6 @@ import com.pos.model.form.SignupForm;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -30,14 +29,7 @@ class AuthDtoSessionInfoIT extends AbstractAuthIntegrationTest {
         authDto.signup(signup);
 
         Integer userId = userDao.findByEmail("string@id.com").orElseThrow().getId();
-
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        String.valueOf(userId),
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
-                )
-        );
+        authenticatePrincipal(String.valueOf(userId), "ROLE_OPERATOR");
 
         AuthData out = authDto.getSessionInfo();
 
@@ -54,13 +46,7 @@ class AuthDtoSessionInfoIT extends AbstractAuthIntegrationTest {
 
     @Test
     void shouldThrowWhenPrincipalInvalid() {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        "not-a-number",
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
-                )
-        );
+        authenticatePrincipal("not-a-number", "ROLE_OPERATOR");
 
         ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
         assertEquals(ErrorMessages.INVALID_SESSION_PRINCIPAL.value(), ex.getMessage());
@@ -68,13 +54,7 @@ class AuthDtoSessionInfoIT extends AbstractAuthIntegrationTest {
 
     @Test
     void shouldThrowWhenPrincipalUnexpectedType() {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        new Object(),
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
-                )
-        );
+        authenticatePrincipal(new Object(), "ROLE_OPERATOR");
 
         ApiException ex = assertThrows(ApiException.class, authDto::getSessionInfo);
         assertEquals(ErrorMessages.INVALID_SESSION_PRINCIPAL.value(), ex.getMessage());

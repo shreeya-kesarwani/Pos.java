@@ -23,18 +23,10 @@ public class DaySalesDto extends AbstractDto {
     private DaySalesApi daySalesApi;
 
     public List<DaySalesData> get(DaySalesForm form) throws ApiException {
+        normalize(form);
+        validateForm(form); // if startDate missing, bean validation throws
 
-        validate(form);
         List<DaySales> daySalesList = daySalesApi.getDaySales(form.getStartDate());
         return DaySalesConversion.toData(daySalesList);
-    }
-
-    private void validate(DaySalesForm form) throws ApiException {
-        normalize(form);
-        validateForm(form);
-        ZonedDateTime start = form.getStartDate();
-        if (start == null) {
-            throw new ApiException(START_AND_END_DATE_REQUIRED.value());
-        }
     }
 }

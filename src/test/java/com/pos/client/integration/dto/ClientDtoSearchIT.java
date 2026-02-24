@@ -3,14 +3,13 @@ package com.pos.client.integration.dto;
 import com.pos.dto.ClientDto;
 import com.pos.model.data.ClientData;
 import com.pos.model.data.PaginatedResponse;
-import com.pos.setup.AbstractIntegrationTest;
 import com.pos.setup.TestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ClientDtoSearchIT extends AbstractIntegrationTest {
+class ClientDtoSearchIT extends AbstractClientDtoIntegrationTest {
 
     @Autowired ClientDto clientDto;
     @Autowired TestFactory factory;

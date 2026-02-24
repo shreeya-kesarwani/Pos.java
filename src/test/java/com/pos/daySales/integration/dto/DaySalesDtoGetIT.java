@@ -16,21 +16,26 @@ class DaySalesDtoGetIT extends AbstractIntegrationTest {
     @Autowired DaySalesDto daySalesDto;
     @Autowired TestFactory factory;
 
+    private DaySalesForm formWithStart(ZonedDateTime start) {
+        DaySalesForm form = new DaySalesForm();
+        form.setStartDate(start);
+        return form;
+    }
+
     @Test
     void shouldReturnDaySales_happyFlow() throws Exception {
         ZonedDateTime start = ZonedDateTime.now().minusDays(1);
 
-        // Seed one row so API/DAO can return it
         factory.createDaySales(start, 5, 12, 1000.0);
         flushAndClear();
 
-        DaySalesForm form = new DaySalesForm();
-        form.setStartDate(start);
-
-        var out = daySalesDto.get(form);
+        var out = daySalesDto.get(formWithStart(start));
 
         assertNotNull(out);
-        assertTrue(out.size() >= 1);
-        // if DaySalesData has fields like revenue/orders/items/date, assert them once you check the DTO mapping
+        assertFalse(out.isEmpty());
+
+        // Stronger check: at least one row exists for that date (if DaySalesData exposes date)
+        // If DaySalesData has getDate()/getOrders()/getItems()/getRevenue(), assert them like:
+        // assertTrue(out.stream().anyMatch(d -> start.toLocalDate().equals(d.getDate())));
     }
 }

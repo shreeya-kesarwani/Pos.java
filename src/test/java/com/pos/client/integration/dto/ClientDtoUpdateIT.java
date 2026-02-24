@@ -4,14 +4,13 @@ import com.pos.dao.ClientDao;
 import com.pos.dto.ClientDto;
 import com.pos.model.form.ClientForm;
 import com.pos.pojo.Client;
-import com.pos.setup.AbstractIntegrationTest;
 import com.pos.setup.TestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ClientDtoUpdateIT extends AbstractIntegrationTest {
+class ClientDtoUpdateIT extends AbstractClientDtoIntegrationTest {
 
     @Autowired ClientDto clientDto;
     @Autowired ClientDao clientDao;
@@ -22,9 +21,7 @@ class ClientDtoUpdateIT extends AbstractIntegrationTest {
         Client existing = factory.createClient("Old", "old@x.com");
         flushAndClear();
 
-        ClientForm form = new ClientForm();
-        form.setName("  New  ");
-        form.setEmail("  new@x.com  ");
+        ClientForm form = clientForm("  New  ", "  new@x.com  ");
 
         clientDto.update(existing.getId(), form);
         flushAndClear();

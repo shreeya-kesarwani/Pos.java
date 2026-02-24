@@ -6,7 +6,10 @@ import com.pos.client.InvoiceClient;
 import com.pos.exception.ApiException;
 import com.pos.flow.OrderFlow;
 import com.pos.model.constants.OrderStatus;
-import com.pos.model.data.*;
+import com.pos.model.data.InvoiceData;
+import com.pos.model.data.OrderData;
+import com.pos.model.data.OrderItemData;
+import com.pos.model.data.PaginatedResponse;
 import com.pos.model.form.InvoiceForm;
 import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
@@ -14,12 +17,18 @@ import com.pos.model.form.OrderSearchForm;
 import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
 import com.pos.pojo.Product;
-import com.pos.utils.*;
+import com.pos.utils.CollectionIndexUtil;
+import com.pos.utils.EnumParseUtil;
+import com.pos.utils.InvoiceConversion;
+import com.pos.utils.InvoicePathUtil;
+import com.pos.utils.InvoiceStorageUtil;
+import com.pos.utils.OrderConversion;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.*;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
-import java.time.ZonedDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,6 +55,7 @@ public class OrderDto extends AbstractDto {
     public PaginatedResponse<OrderData> search(OrderSearchForm form) throws ApiException {
         normalize(form);
         validateForm(form);
+
         if (form.getPageNumber() == null) form.setPageNumber(0);
         if (form.getPageSize() == null) form.setPageSize(10);
 
@@ -55,10 +65,17 @@ public class OrderDto extends AbstractDto {
 
         OrderStatus orderStatus = validateStatus(form.getStatus());
 
-        List<Order> orders = orderApi.search(form.getId(), form.getStart(), form.getEnd(), orderStatus, form.getPageNumber(), form.getPageSize());
+        List<Order> orders = orderApi.search(
+                form.getId(),
+                form.getStart(),
+                form.getEnd(),
+                orderStatus,
+                form.getPageNumber(),
+                form.getPageSize()
+        );
         long totalCount = orderApi.getCount(form.getId(), form.getStart(), form.getEnd(), orderStatus);
 
-        if (orders == null || orders.isEmpty()) {
+        if (orders.isEmpty()) {
             return PaginatedResponse.of(List.of(), totalCount, form.getPageNumber());
         }
 
@@ -73,7 +90,7 @@ public class OrderDto extends AbstractDto {
         if (orderId == null) throw new ApiException(ORDER_ID_REQUIRED.value());
 
         List<OrderItem> items = orderApi.getItemsByOrderId(orderId);
-        if (items == null || items.isEmpty()) return List.of();
+        if (items.isEmpty()) return List.of();
 
         Map<Integer, Product> productById = getProductMapFromItems(items);
         return OrderConversion.toOrderItemDataList(items, productById);
@@ -87,7 +104,7 @@ public class OrderDto extends AbstractDto {
         orderApi.getCheck(orderId);
 
         List<OrderItem> items = orderApi.getItemsByOrderId(orderId);
-        if (items == null || items.isEmpty()) {
+        if (items.isEmpty()) {
             throw new ApiException(CANNOT_INVOICE_EMPTY_ORDER.value() + ": orderId=" + orderId);
         }
 
@@ -130,7 +147,7 @@ public class OrderDto extends AbstractDto {
     }
 
     private Map<Integer, Product> getProductMapFromItems(List<OrderItem> items) throws ApiException {
-        if (items == null || items.isEmpty()) return Map.of();
+        if (items.isEmpty()) return Map.of();
 
         Set<Integer> productIds = items.stream()
                 .map(OrderItem::getProductId)
@@ -140,7 +157,7 @@ public class OrderDto extends AbstractDto {
         if (productIds.isEmpty()) return Map.of();
 
         List<Product> products = productApi.getByIds(productIds.stream().toList());
-        if (products == null || products.isEmpty()) return Map.of();
+        if (products.isEmpty()) return Map.of();
 
         return CollectionIndexUtil.indexBy(products, Product::getId);
     }
@@ -161,7 +178,12 @@ public class OrderDto extends AbstractDto {
             validateForm(itemForm);
         }
 
-        List<String> barcodes = itemForms.stream().map(OrderItemForm::getBarcode).filter(Objects::nonNull).distinct().toList();
+        List<String> barcodes = itemForms.stream()
+                .map(OrderItemForm::getBarcode)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
         Map<String, Product> productByBarcode = getProductMapByBarcode(barcodes);
 
         List<OrderItem> items = new ArrayList<>(itemForms.size());
@@ -178,7 +200,6 @@ public class OrderDto extends AbstractDto {
     }
 
     private List<Integer> extractOrderIds(List<Order> orders) {
-        if (orders == null || orders.isEmpty()) return List.of();
         return orders.stream()
                 .map(Order::getId)
                 .filter(Objects::nonNull)
@@ -186,10 +207,10 @@ public class OrderDto extends AbstractDto {
     }
 
     private Map<Integer, List<OrderItem>> getItemsGroupedByOrderId(List<Integer> orderIds) {
-        if (orderIds == null || orderIds.isEmpty()) return Map.of();
+        if (orderIds.isEmpty()) return Map.of();
 
         List<OrderItem> allItems = orderApi.getItemsByOrderIds(orderIds);
-        if (allItems == null || allItems.isEmpty()) return Map.of();
+        if (allItems.isEmpty()) return Map.of();
 
         return allItems.stream()
                 .filter(oi -> oi.getOrderId() != null)
@@ -197,9 +218,10 @@ public class OrderDto extends AbstractDto {
     }
 
     private Map<String, Product> getProductMapByBarcode(List<String> barcodes) throws ApiException {
-        if (barcodes == null || barcodes.isEmpty()) return Map.of();
+        if (barcodes.isEmpty()) return Map.of();
+
         List<Product> products = productApi.getCheckByBarcodes(barcodes);
-        if (products == null || products.isEmpty()) return Map.of();
+        if (products.isEmpty()) return Map.of();
 
         return products.stream()
                 .filter(p -> p.getBarcode() != null)

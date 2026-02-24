@@ -2,14 +2,13 @@ package com.pos.inventory.integration.dto;
 
 import com.pos.dto.InventoryDto;
 import com.pos.model.form.InventorySearchForm;
-import com.pos.setup.AbstractIntegrationTest;
 import com.pos.setup.TestFactory;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class InventoryDtoSearchIT extends AbstractIntegrationTest {
+class InventoryDtoSearchIT extends AbstractInventoryDtoIntegrationTest {
 
     @Autowired InventoryDto inventoryDto;
     @Autowired TestFactory factory;
@@ -21,20 +20,28 @@ class InventoryDtoSearchIT extends AbstractIntegrationTest {
         factory.createInventory(p1.getId(), 3);
         flushAndClear();
 
-        InventorySearchForm form = new InventorySearchForm();
-        form.setBarcode("  b1  ");
-        form.setProductName("  Prod  ");
-        form.setPageNumber(0);
-        form.setPageSize(10);
-
-        var resp = inventoryDto.getAll(form);
+        var resp = inventoryDto.getAll(searchForm("  b1  ", "  Prod  "));
 
         assertNotNull(resp);
         assertTrue(resp.getTotalCount() >= 1);
         assertTrue(resp.getData().stream().anyMatch(d ->
-                "b1".equals(d.getBarcode()) &&
-                        "Prod One".equals(d.getProductName()) &&
+                d.getBarcode().equals("b1") &&
+                        d.getProductName().equals("Prod One") &&
                         d.getQuantity() == 3
         ));
+    }
+
+    @Test
+    void shouldReturnEmpty_whenNoMatches() throws Exception {
+        var client = factory.createClient("Acme", "a@acme.com");
+        var p1 = factory.createProduct("b1", "P1", client.getId(), 10.0, null);
+        factory.createInventory(p1.getId(), 3);
+        flushAndClear();
+
+        var resp = inventoryDto.getAll(searchForm("no-such-barcode", "no-such-name"));
+
+        assertNotNull(resp);
+        assertEquals(0, resp.getData().size());
+        assertEquals(0, resp.getTotalCount());
     }
 }

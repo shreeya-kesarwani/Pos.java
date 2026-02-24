@@ -32,8 +32,9 @@ public class SalesReportDto extends AbstractDto {
         LocalDate start = form.getStartDate();
         LocalDate end = form.getEndDate();
 
-        if (start != null && end != null && start.isAfter(end)) {
-            throw new ApiException(START_DATE_AFTER_END_DATE.value() + " | startDate=" + start + ", endDate=" + end);
+        if (start.isAfter(end)) {
+            throw new ApiException(START_DATE_AFTER_END_DATE.value()
+                    + " | startDate=" + start + ", endDate=" + end);
         }
     }
 }

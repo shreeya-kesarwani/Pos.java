@@ -10,7 +10,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -32,14 +31,7 @@ class AuthDtoChangePasswordIT extends AbstractAuthIntegrationTest {
         authDto.signup(signup);
 
         Integer userId = userDao.findByEmail("x@y.com").orElseThrow().getId();
-
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(
-                        userId,
-                        null,
-                        List.of(new SimpleGrantedAuthority("ROLE_OPERATOR"))
-                )
-        );
+        authenticate(userId, "ROLE_OPERATOR");
 
         ChangePasswordForm form = new ChangePasswordForm();
         form.setCurrentPassword("oldPass");
@@ -47,14 +39,11 @@ class AuthDtoChangePasswordIT extends AbstractAuthIntegrationTest {
 
         authDto.changePassword(form);
 
-        // verify new password works
         LoginForm login = new LoginForm();
         login.setEmail("x@y.com");
         login.setPassword("newPass");
 
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getSession(true)).thenReturn(mock(jakarta.servlet.http.HttpSession.class));
-
+        HttpServletRequest request = mockRequestWithSession();
         assertNotNull(authDto.login(login, request));
     }
 

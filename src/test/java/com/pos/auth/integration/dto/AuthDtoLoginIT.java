@@ -29,9 +29,8 @@ class AuthDtoLoginIT extends AbstractAuthIntegrationTest {
         form.setEmail("  A@B.COM  ");
         form.setPassword("p");
 
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        HttpSession session = mock(HttpSession.class);
-        when(request.getSession(true)).thenReturn(session);
+        HttpServletRequest request = mockRequestWithSession();
+        HttpSession session = request.getSession(true);
 
         AuthData out = authDto.login(form, request);
 
@@ -48,9 +47,7 @@ class AuthDtoLoginIT extends AbstractAuthIntegrationTest {
         form.setEmail("missing@b.com");
         form.setPassword("wrong");
 
-        HttpServletRequest request = mock(HttpServletRequest.class);
-        when(request.getSession(true)).thenReturn(mock(HttpSession.class));
-
+        HttpServletRequest request = mockRequestWithSession();
         assertThrows(ApiException.class, () -> authDto.login(form, request));
     }
 }
