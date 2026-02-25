@@ -91,4 +91,14 @@ class OrderItemDaoTest extends AbstractDaoTest {
         assertEquals(2, out.size());
         assertTrue(out.stream().allMatch(x -> x.getOrderId().equals(o10.getId()) || x.getOrderId().equals(o11.getId())));
     }
+
+    @Test
+    void selectByOrderIds_whenNull_returnsEmpty() {
+        assertEquals(List.of(), dao.selectByOrderIds(null));
+    }
+
+    @Test
+    void selectByOrderIds_whenEmpty_returnsEmpty() {
+        assertEquals(List.of(), dao.selectByOrderIds(List.of()));
+    }
 }

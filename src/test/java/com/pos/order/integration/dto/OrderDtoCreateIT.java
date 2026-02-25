@@ -120,4 +120,19 @@ class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
         } catch (Exception ignored) {
         }
     }
+
+    @Test
+    void shouldThrowWhenBarcodeNotFound_afterTrimNormalization() throws Exception {
+        // Setup some other valid product so DB is not empty
+        var client = factory.createClient("Acme2", "a2@acme.com");
+        var product = factory.createProduct("exists", "P-exists", client.getId(), 100.0, null);
+        factory.createInventory(product.getId(), 10);
+        flushAndClear();
+
+        ApiException ex = assertThrows(ApiException.class,
+                () -> orderDto.create(orderForm(item("  missing-bc  ", 1, 10.0))));
+
+        // Optional: tighten assertion if message includes barcode
+        assertTrue(ex.getMessage().toLowerCase().contains("barcode"));
+    }
 }
