@@ -1,22 +1,33 @@
 package com.pos.order.integration.dto;
 
+import com.pos.dao.ClientDao;
+import com.pos.dao.InventoryDao;
+import com.pos.dao.ProductDao;
 import com.pos.exception.ApiException;
-import com.pos.model.constants.OrderStatus;
 import com.pos.model.form.OrderForm;
 import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
+class OrderDtoCreationIT extends AbstractOrderDtoIntegrationTest {
+
+    @Autowired private ClientDao clientDao;
+    @Autowired private ProductDao productDao;
+    @Autowired private InventoryDao inventoryDao;
 
     @Test
     void shouldCreateOrder_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 50);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct("b1", "P1", client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 50));
         flushAndClear();
 
         Integer orderId = orderDto.create(orderForm(item("  b1  ", 2, 10.0)));
@@ -25,11 +36,17 @@ class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
 
     @Test
     void shouldCreateOrderWithMultipleItems() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product1 = factory.createProduct("bc1", "P1", client.getId(), 100.0, null);
-        var product2 = factory.createProduct("bc2", "P2", client.getId(), 200.0, null);
-        factory.createInventory(product1.getId(), 50);
-        factory.createInventory(product2.getId(), 50);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var product1 = TestEntities.newProduct("bc1", "P1", client.getId(), 100.0, null);
+        productDao.insert(product1);
+
+        var product2 = TestEntities.newProduct("bc2", "P2", client.getId(), 200.0, null);
+        productDao.insert(product2);
+
+        inventoryDao.insert(TestEntities.newInventory(product1.getId(), 50));
+        inventoryDao.insert(TestEntities.newInventory(product2.getId(), 50));
         flushAndClear();
 
         Integer orderId = orderDto.create(orderForm(
@@ -88,10 +105,13 @@ class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
 
     @Test
     void shouldThrowWhenBarcodeNotFound() throws Exception {
-        // setup: create product/inventory for something else, but not "missing"
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 10);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct("b1", "P1", client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 10));
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.create(orderForm(item("missing", 1, 10.0))));
@@ -100,20 +120,18 @@ class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
     @Test
     void create_whenItemsNull_shouldPassEmptyListToFlow() throws Exception {
         OrderForm form = new OrderForm();
-        form.setItems(null); // triggers (form.getItems()==null) branch
+        form.setItems(null);
 
-        // OrderFlow will decide behavior (likely throw)
         try {
             orderDto.create(form);
         } catch (Exception ignored) {
-            // branch still executed
         }
     }
 
     @Test
     void create_whenItemsEmpty_shouldHitEmptyBranch() throws Exception {
         OrderForm form = new OrderForm();
-        form.setItems(List.of()); // empty branch
+        form.setItems(List.of());
 
         try {
             orderDto.create(form);
@@ -123,16 +141,18 @@ class OrderDtoCreateIT extends AbstractOrderDtoIntegrationTest {
 
     @Test
     void shouldThrowWhenBarcodeNotFound_afterTrimNormalization() throws Exception {
-        // Setup some other valid product so DB is not empty
-        var client = factory.createClient("Acme2", "a2@acme.com");
-        var product = factory.createProduct("exists", "P-exists", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 10);
+        var client = TestEntities.newClient("Acme2", "a2@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct("exists", "P-exists", client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 10));
         flushAndClear();
 
         ApiException ex = assertThrows(ApiException.class,
                 () -> orderDto.create(orderForm(item("  missing-bc  ", 1, 10.0))));
 
-        // Optional: tighten assertion if message includes barcode
         assertTrue(ex.getMessage().toLowerCase().contains("barcode"));
     }
 }

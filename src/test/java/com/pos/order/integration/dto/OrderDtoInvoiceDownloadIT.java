@@ -2,6 +2,9 @@ package com.pos.order.integration.dto;
 
 import com.pos.api.OrderApi;
 import com.pos.client.InvoiceClient;
+import com.pos.dao.ClientDao;
+import com.pos.dao.InventoryDao;
+import com.pos.dao.ProductDao;
 import com.pos.dto.OrderDto;
 import com.pos.exception.ApiException;
 import com.pos.model.data.InvoiceData;
@@ -9,7 +12,7 @@ import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
 import com.pos.pojo.Order;
 import com.pos.setup.AbstractIntegrationTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import com.pos.utils.InvoicePathUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,24 +34,24 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
 
     @Autowired private OrderDto orderDto;
     @Autowired private OrderApi orderApi;
-    @Autowired private TestFactory factory;
 
-    // external dependency ONLY
+    @Autowired private ClientDao clientDao;
+    @Autowired private ProductDao productDao;
+    @Autowired private InventoryDao inventoryDao;
+
     @MockBean private InvoiceClient invoiceClient;
 
     @Test
     void shouldDownloadInvoice_useExistingFileAndNotCallInvoiceClient() throws Exception {
         Integer orderId = createOrderWithOneItem("b1");
 
-        // create invoice file
         byte[] existingBytes = "existing-invoice".getBytes();
         Files.createDirectories(Path.of(INVOICE_DIR));
         Path invoiceFile = InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId);
         Files.write(invoiceFile, existingBytes);
 
-        // attach invoicePath WITHOUT changing status logic: update entity directly
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath(INVOICE_DIR); // directory is allowed; util resolves INV-<id>.pdf
+        order.setInvoicePath(INVOICE_DIR);
         flushAndClear();
 
         ResponseEntity<byte[]> resp = orderDto.downloadInvoice(orderId);
@@ -62,7 +65,6 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
     void shouldGenerateInvoiceWhenDownloadingWithoutExistingPath() throws Exception {
         Integer orderId = createOrderWithOneItem("b2");
 
-        // ensure no leftover file
         Files.deleteIfExists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId));
 
         byte[] pdf = "pdf".getBytes();
@@ -78,7 +80,6 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         assertArrayEquals(pdf, resp.getBody());
         verify(invoiceClient, times(1)).generate(any());
 
-        // also file should now exist because generateInvoice() stores it
         assertTrue(Files.exists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId)));
     }
 
@@ -86,9 +87,8 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
     void shouldGenerateInvoiceWhenInvoicePathPresentButFileMissing() throws Exception {
         Integer orderId = createOrderWithOneItem("b3");
 
-        // set invoicePath non-empty, but ensure file does NOT exist
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath(INVOICE_DIR);   // non-empty path triggers tryRead branch
+        order.setInvoicePath(INVOICE_DIR);
         flushAndClear();
 
         Files.deleteIfExists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId));
@@ -117,7 +117,6 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
     void shouldRegenerateWhenInvoicePathIsBlank() throws Exception {
         Integer orderId = createOrderWithOneItem("b4");
 
-        // set blank invoicePath → trim().isEmpty() is true → skip tryRead → regenerate
         Order order = orderApi.getCheck(orderId);
         order.setInvoicePath("   ");
         flushAndClear();
@@ -140,7 +139,6 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
     void shouldGenerateWhenInvoicePathBlankString() throws Exception {
         Integer orderId = createOrderWithOneItem("bb1");
 
-        // set invoicePath = "   " (non-null but blank)
         Order order = orderApi.getCheck(orderId);
         order.setInvoicePath("   ");
         flushAndClear();
@@ -161,13 +159,13 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
     void downloadInvoice_readsExistingFileWhenInvoicePathPresent() throws Exception {
         Integer orderId = createOrderWithOneItem("x1");
 
-        Files.createDirectories(Path.of("/tmp/invoices"));
+        Files.createDirectories(Path.of(INVOICE_DIR));
         byte[] existing = "hello".getBytes();
-        Path file = InvoicePathUtil.invoiceFilePath("/tmp/invoices", orderId);
+        Path file = InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId);
         Files.write(file, existing);
 
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath("/tmp/invoices");
+        order.setInvoicePath(INVOICE_DIR);
         flushAndClear();
 
         var resp = orderDto.downloadInvoice(orderId);
@@ -181,10 +179,10 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         Integer orderId = createOrderWithOneItem("x2");
 
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath("/tmp/invoices");
+        order.setInvoicePath(INVOICE_DIR);
         flushAndClear();
 
-        Files.deleteIfExists(InvoicePathUtil.invoiceFilePath("/tmp/invoices", orderId));
+        Files.deleteIfExists(InvoicePathUtil.invoiceFilePath(INVOICE_DIR, orderId));
 
         byte[] pdf = "regen".getBytes();
         InvoiceData data = new InvoiceData();
@@ -228,7 +226,7 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         Integer orderId = createOrderWithOneItem("z1");
 
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath("");   // empty string branch
+        order.setInvoicePath("");
         flushAndClear();
 
         byte[] pdf = "x".getBytes();
@@ -240,6 +238,7 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         var resp = orderDto.downloadInvoice(orderId);
 
         assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
     }
 
     @Test
@@ -247,7 +246,7 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         Integer orderId = createOrderWithOneItem("bblank");
 
         Order order = orderApi.getCheck(orderId);
-        order.setInvoicePath("   "); // blank branch
+        order.setInvoicePath("   ");
         flushAndClear();
 
         byte[] pdf = "x".getBytes();
@@ -259,14 +258,19 @@ class OrderDtoInvoiceDownloadIT extends AbstractIntegrationTest {
         var resp = orderDto.downloadInvoice(orderId);
 
         assertArrayEquals(pdf, resp.getBody());
+        verify(invoiceClient, times(1)).generate(any());
     }
 
     // ---------- helpers ----------
 
     private Integer createOrderWithOneItem(String barcode) throws Exception {
-        var client = factory.createClient("Acme-" + barcode, barcode + "@acme.com");
-        var product = factory.createProduct(barcode, "P-" + barcode, client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 50);
+        var client = TestEntities.newClient("Acme-" + barcode, barcode + "@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct(barcode, "P-" + barcode, client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 50));
         flushAndClear();
 
         OrderItemForm item = new OrderItemForm();

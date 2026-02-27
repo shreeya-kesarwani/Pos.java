@@ -12,6 +12,7 @@ import java.util.List;
 public abstract class AbstractOrderDtoIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired protected OrderDto orderDto;
+    //todo make it static
     @Autowired protected TestFactory factory;
 
     protected OrderItemForm item(String barcode, Integer qty, Double sp) {

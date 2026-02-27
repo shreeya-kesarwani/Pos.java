@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
 import java.util.List;
-
+//todo mock fixing in unit tests, test factory refactor
 import static org.junit.jupiter.api.Assertions.*;
 
 @Import({ClientDao.class, TestFactory.class})

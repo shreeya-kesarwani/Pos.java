@@ -2,6 +2,7 @@ package com.pos.order.integration.dto;
 
 import com.pos.api.OrderApi;
 import com.pos.client.InvoiceClient;
+import com.pos.dao.*;
 import com.pos.dto.OrderDto;
 import com.pos.exception.ApiException;
 import com.pos.model.constants.OrderStatus;
@@ -10,10 +11,8 @@ import com.pos.model.form.OrderForm;
 import com.pos.model.form.OrderItemForm;
 import com.pos.setup.AbstractIntegrationTest;
 import com.pos.setup.TestEntities;
-import com.pos.setup.TestFactory;
 import com.pos.utils.InvoicePathUtil;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
 
@@ -28,18 +27,26 @@ import static org.mockito.Mockito.*;
 
 class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
 
-    @Autowired OrderDto orderDto;
-    @Autowired OrderApi orderApi;
-    @Autowired TestFactory factory;
+    @Autowired private OrderDto orderDto;
+    @Autowired private OrderApi orderApi;
 
-    @MockBean InvoiceClient invoiceClient; // external dependency ONLY
+    @Autowired private ClientDao clientDao;
+    @Autowired private ProductDao productDao;
+    @Autowired private InventoryDao inventoryDao;
+    @Autowired private OrderDao orderDao;
+    @Autowired private OrderItemDao orderItemDao;
+
+    @MockBean private InvoiceClient invoiceClient;
 
     @Test
     void shouldGenerateInvoice_storePdfAndAttachPath_happyFlow() throws Exception {
-        // Arrange: create product + inventory + order
-        var client = factory.createClient("Acme", "a@acme.com");
-        var product = factory.createProduct("b1", "P1", client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 50);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct("b1", "P1", client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 50));
         flushAndClear();
 
         OrderItemForm item = new OrderItemForm();
@@ -53,7 +60,6 @@ class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
         Integer orderId = orderDto.create(orderForm);
         flushAndClear();
 
-        // Mock external invoice generation
         byte[] pdfBytes = "pdf-bytes".getBytes();
         InvoiceData invoiceData = new InvoiceData();
         invoiceData.setOrderId(orderId);
@@ -61,20 +67,16 @@ class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
 
         when(invoiceClient.generate(any())).thenReturn(invoiceData);
 
-        // Act
         InvoiceData out = orderDto.generateInvoice(orderId);
         flushAndClear();
 
-        // Assert: invoice client called
         verify(invoiceClient).generate(any());
         assertEquals(invoiceData.getBase64Pdf(), out.getBase64Pdf());
 
-        // Assert: order has invoice path attached
         var updatedOrder = orderApi.getCheck(orderId);
         assertNotNull(updatedOrder.getInvoicePath());
         assertTrue(updatedOrder.getInvoicePath().endsWith(InvoicePathUtil.invoiceFileName(orderId)));
 
-        // Assert: file exists and matches bytes
         Path savedPath = Path.of(updatedOrder.getInvoicePath());
         assertTrue(Files.exists(savedPath));
         assertArrayEquals(pdfBytes, Files.readAllBytes(savedPath));
@@ -82,7 +84,8 @@ class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
 
     @Test
     void shouldThrowWhenGenerateInvoiceNoItems() {
-        var order = factory.createOrder(OrderStatus.CREATED, null);
+        var order = TestEntities.newOrder(OrderStatus.CREATED, null);
+        orderDao.insert(order);
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.generateInvoice(order.getId()));
@@ -95,21 +98,23 @@ class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void shouldThrowWhenGenerateInvoiceForEmptyOrder() throws Exception {
-        var order = factory.createOrder(com.pos.model.constants.OrderStatus.CREATED, null);
+    void shouldThrowWhenGenerateInvoiceForEmptyOrder() {
+        var order = TestEntities.newOrder(OrderStatus.CREATED, null);
+        orderDao.insert(order);
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.generateInvoice(order.getId()));
     }
 
     @Test
-    void shouldThrowWhenGenerateInvoiceProductMissing() throws Exception {
-        var order = factory.createOrder(com.pos.model.constants.OrderStatus.CREATED, null);
+    void shouldThrowWhenGenerateInvoiceProductMissing() {
+        var order = TestEntities.newOrder(OrderStatus.CREATED, null);
+        orderDao.insert(order);
 
         // orderItem references non-existent productId
-        factory.createOrderItems(order.getId(),
-                List.of(com.pos.setup.TestEntities.orderItem(order.getId(), 999999, 1, 10.0))
-        );
+        var oi = TestEntities.newOrderItem(order.getId(), 999999, 1, 10.0);
+        orderItemDao.insert(oi);
+
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.generateInvoice(order.getId()));
@@ -133,30 +138,33 @@ class OrderDtoInvoiceGenerateIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void generateInvoice_whenOrderHasNoItems_shouldThrow() throws Exception {
-        var order = factory.createOrder(OrderStatus.CREATED, null);
+    void generateInvoice_whenOrderHasNoItems_shouldThrow() {
+        var order = TestEntities.newOrder(OrderStatus.CREATED, null);
+        orderDao.insert(order);
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.generateInvoice(order.getId()));
     }
 
     @Test
-    void generateInvoice_whenProductMissing_shouldThrow() throws Exception {
-        var order = factory.createOrder(OrderStatus.CREATED, null);
+    void generateInvoice_whenProductMissing_shouldThrow() {
+        var order = TestEntities.newOrder(OrderStatus.CREATED, null);
+        orderDao.insert(order);
 
-        factory.createOrderItems(order.getId(),
-                List.of(TestEntities.orderItem(order.getId(), 999999, 1, 10.0))
-        );
-
+        orderItemDao.insert(TestEntities.newOrderItem(order.getId(), 999999, 1, 10.0));
         flushAndClear();
 
         assertThrows(ApiException.class, () -> orderDto.generateInvoice(order.getId()));
     }
 
     private Integer createOrderWithOneItem(String barcode) throws Exception {
-        var client = factory.createClient("C-" + barcode, barcode + "@acme.com");
-        var product = factory.createProduct(barcode, "P-" + barcode, client.getId(), 100.0, null);
-        factory.createInventory(product.getId(), 50);
+        var client = TestEntities.newClient("C-" + barcode, barcode + "@acme.com");
+        clientDao.insert(client);
+
+        var product = TestEntities.newProduct(barcode, "P-" + barcode, client.getId(), 100.0, null);
+        productDao.insert(product);
+
+        inventoryDao.insert(TestEntities.newInventory(product.getId(), 50));
         flushAndClear();
 
         OrderItemForm item = new OrderItemForm();

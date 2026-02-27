@@ -1,9 +1,11 @@
 package com.pos.product.integration.dto;
 
+import com.pos.dao.ClientDao;
 import com.pos.dao.ProductDao;
 import com.pos.dto.ProductDto;
 import com.pos.exception.ApiException;
 import com.pos.model.form.ProductForm;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -13,6 +15,7 @@ class ProductDtoCreateIT extends AbstractProductDtoIntegrationTest {
 
     @Autowired ProductDto productDto;
     @Autowired ProductDao productDao;
+    @Autowired ClientDao clientDao;
 
     private ProductForm productForm(String name, String barcode, double mrp, Integer clientId) {
         ProductForm form = new ProductForm();
@@ -25,7 +28,8 @@ class ProductDtoCreateIT extends AbstractProductDtoIntegrationTest {
 
     @Test
     void shouldCreateProduct_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
         flushAndClear();
 
         ProductForm form = productForm("  iPhone  ", "  b1  ", 100.0, client.getId());
@@ -46,16 +50,18 @@ class ProductDtoCreateIT extends AbstractProductDtoIntegrationTest {
     @Test
     void shouldThrowWhenProductFormInvalid() {
         ProductForm form = new ProductForm();
-        form.setName(null); // Bean validation should fail
+        form.setName(null);
 
         assertThrows(ApiException.class, () -> productDto.add(form));
     }
 
     @Test
     void shouldThrowWhenBarcodeAlreadyExists() throws Exception {
-        var client = factory.createClient("AcmeDup", "dup@acme.com");
-        // seed an existing product with barcode b1
-        factory.createProduct("b1", "Existing", client.getId(), 10.0, null);
+        var client = TestEntities.newClient("AcmeDup", "dup@acme.com");
+        clientDao.insert(client);
+
+        // seed existing product with barcode b1
+        productDao.insert(TestEntities.newProduct("b1", "Existing", client.getId(), 10.0, null));
         flushAndClear();
 
         ProductForm form = productForm("New Product", "b1", 20.0, client.getId());

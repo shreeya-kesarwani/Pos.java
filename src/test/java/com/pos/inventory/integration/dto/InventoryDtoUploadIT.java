@@ -1,9 +1,11 @@
 package com.pos.inventory.integration.dto;
 
+import com.pos.dao.ClientDao;
 import com.pos.dao.InventoryDao;
+import com.pos.dao.ProductDao;
 import com.pos.dto.InventoryDto;
 import com.pos.exception.ApiException;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -13,12 +15,17 @@ class InventoryDtoUploadIT extends AbstractInventoryDtoIntegrationTest {
 
     @Autowired InventoryDto inventoryDto;
     @Autowired InventoryDao inventoryDao;
-    @Autowired TestFactory factory;
+
+    @Autowired private ClientDao clientDao;
+    @Autowired private ProductDao productDao;
 
     @Test
     void shouldUploadInventory_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var p1 = factory.createProduct("b1", "P1", client.getId(), 10.0, null);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var p1 = TestEntities.newProduct("b1", "P1", client.getId(), 10.0, null);
+        productDao.insert(p1);
         flushAndClear();
 
         String tsv =

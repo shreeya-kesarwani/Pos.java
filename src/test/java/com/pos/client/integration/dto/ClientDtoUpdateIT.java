@@ -4,7 +4,7 @@ import com.pos.dao.ClientDao;
 import com.pos.dto.ClientDto;
 import com.pos.model.form.ClientForm;
 import com.pos.pojo.Client;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -14,11 +14,11 @@ class ClientDtoUpdateIT extends AbstractClientDtoIntegrationTest {
 
     @Autowired ClientDto clientDto;
     @Autowired ClientDao clientDao;
-    @Autowired TestFactory factory;
 
     @Test
     void shouldUpdateClient_happyFlow() throws Exception {
-        Client existing = factory.createClient("Old", "old@x.com");
+        Client existing = TestEntities.newClient("Old", "old@x.com");
+        clientDao.insert(existing);
         flushAndClear();
 
         ClientForm form = clientForm("  New  ", "  new@x.com  ");

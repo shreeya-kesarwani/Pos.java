@@ -1,7 +1,9 @@
 package com.pos.product.integration.dto;
 
+import com.pos.dao.ClientDao;
 import com.pos.dao.ProductDao;
 import com.pos.dto.ProductDto;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -13,10 +15,12 @@ class ProductDtoBulkUploadIT extends AbstractProductDtoIntegrationTest {
 
     @Autowired ProductDto productDto;
     @Autowired ProductDao productDao;
+    @Autowired ClientDao clientDao;
 
     @Test
     void shouldBulkUploadProducts_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
         flushAndClear();
 
         String tsv =
@@ -35,7 +39,8 @@ class ProductDtoBulkUploadIT extends AbstractProductDtoIntegrationTest {
 
     @Test
     void shouldReturn_whenBulkUploadFileHasNoRows() throws Exception {
-        var client = factory.createClient("Acme2", "a2@acme.com");
+        var client = TestEntities.newClient("Acme2", "a2@acme.com");
+        clientDao.insert(client);
         flushAndClear();
 
         String tsv = "barcode\tname\tmrp\timageurl\n"; // header only

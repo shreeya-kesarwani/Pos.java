@@ -2,6 +2,7 @@ package com.pos.salesReport.integration.dto;
 
 import com.pos.dto.SalesReportDto;
 import com.pos.exception.ApiException;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,9 +18,11 @@ class SalesReportDtoValidationIT extends AbstractSalesReportDtoIT {
     private Integer clientId;
 
     @BeforeEach
-    void setup() throws Exception {
-        var client = factory.createClient("VClient", "v@acme.com");
+    void setup() {
+        var client = TestEntities.newClient("VClient", "v@acme.com");
+        clientDao.insert(client);
         clientId = client.getId();
+        flushAndClear();
     }
 
     @Test
@@ -42,7 +45,6 @@ class SalesReportDtoValidationIT extends AbstractSalesReportDtoIT {
                 salesReportDto.getCheck(form(clientId, null, LocalDate.now()))
         );
         assertNotNull(ex.getMessage());
-        // Bean Validation message varies; keep robust
         assertTrue(ex.getMessage().toLowerCase().contains("start"));
     }
 
@@ -57,7 +59,6 @@ class SalesReportDtoValidationIT extends AbstractSalesReportDtoIT {
 
     @Test
     void shouldNotThrowWhenStartBeforeEnd() throws Exception {
-        // seed data so API doesn't throw "No sales report data found"
         seedOneInvoicedSale(clientId, "vb1");
 
         assertDoesNotThrow(() ->

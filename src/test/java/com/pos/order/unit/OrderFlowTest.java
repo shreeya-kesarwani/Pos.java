@@ -65,7 +65,7 @@ class OrderFlowTest {
 
         verifyNoInteractions(productApi, inventoryApi, orderApi);
     }
-
+//todo: write a happy flow test to check if the order is created or not, dont remove this add new
     @Test
     void createOrder_shouldValidatePriceAndReduceInventory_forEachItem_thenCreateOrder() throws ApiException {
         when(orderApi.create(List.of(i1, i2))).thenReturn(999);
@@ -73,7 +73,7 @@ class OrderFlowTest {
         Integer orderId = orderFlow.createOrder(List.of(i1, i2));
 
         assertEquals(999, orderId);
-
+//todo: result of this calls are not verified and mocked, mock for product.get
         InOrder inOrder = inOrder(productApi, inventoryApi, orderApi);
 
         inOrder.verify(productApi).validateSellingPrice(101, 50.0);

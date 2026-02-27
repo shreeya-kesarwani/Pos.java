@@ -1,8 +1,10 @@
 package com.pos.inventory.integration.dto;
 
+import com.pos.dao.ClientDao;
+import com.pos.dao.InventoryDao;
+import com.pos.dao.ProductDao;
 import com.pos.dto.InventoryDto;
-import com.pos.model.form.InventorySearchForm;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -11,13 +13,20 @@ import static org.junit.jupiter.api.Assertions.*;
 class InventoryDtoSearchIT extends AbstractInventoryDtoIntegrationTest {
 
     @Autowired InventoryDto inventoryDto;
-    @Autowired TestFactory factory;
+
+    @Autowired private ClientDao clientDao;
+    @Autowired private ProductDao productDao;
+    @Autowired private InventoryDao inventoryDao;
 
     @Test
     void shouldGetAllInventory_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var p1 = factory.createProduct("b1", "Prod One", client.getId(), 10.0, null);
-        factory.createInventory(p1.getId(), 3);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var p1 = TestEntities.newProduct("b1", "Prod One", client.getId(), 10.0, null);
+        productDao.insert(p1);
+
+        inventoryDao.insert(TestEntities.newInventory(p1.getId(), 3));
         flushAndClear();
 
         var resp = inventoryDto.getAll(searchForm("  b1  ", "  Prod  "));
@@ -33,9 +42,13 @@ class InventoryDtoSearchIT extends AbstractInventoryDtoIntegrationTest {
 
     @Test
     void shouldReturnEmpty_whenNoMatches() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
-        var p1 = factory.createProduct("b1", "P1", client.getId(), 10.0, null);
-        factory.createInventory(p1.getId(), 3);
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
+        var p1 = TestEntities.newProduct("b1", "P1", client.getId(), 10.0, null);
+        productDao.insert(p1);
+
+        inventoryDao.insert(TestEntities.newInventory(p1.getId(), 3));
         flushAndClear();
 
         var resp = inventoryDto.getAll(searchForm("no-such-barcode", "no-such-name"));

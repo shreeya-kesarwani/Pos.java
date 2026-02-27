@@ -2,6 +2,7 @@ package com.pos.salesReport.integration.dto;
 
 import com.pos.dto.SalesReportDto;
 import com.pos.exception.ApiException;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -15,7 +16,9 @@ class SalesReportDtoGetIT extends AbstractSalesReportDtoIT {
 
     @Test
     void shouldGetSalesReport_happyFlow() throws Exception {
-        var client = factory.createClient("Acme", "a@acme.com");
+        var client = TestEntities.newClient("Acme", "a@acme.com");
+        clientDao.insert(client);
+
         seedOneInvoicedSale(client.getId(), "b1");
 
         var data = salesReportDto.getCheck(
@@ -28,7 +31,9 @@ class SalesReportDtoGetIT extends AbstractSalesReportDtoIT {
 
     @Test
     void shouldGetSalesReportWithNullClientId() throws Exception {
-        var client = factory.createClient("Acme2", "a2@acme.com");
+        var client = TestEntities.newClient("Acme2", "a2@acme.com");
+        clientDao.insert(client);
+
         seedOneInvoicedSale(client.getId(), "b2");
 
         var data = salesReportDto.getCheck(
