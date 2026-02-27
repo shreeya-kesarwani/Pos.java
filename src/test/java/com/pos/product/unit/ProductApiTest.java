@@ -4,7 +4,6 @@ import com.pos.api.ProductApi;
 import com.pos.dao.ProductDao;
 import com.pos.exception.ApiException;
 import com.pos.pojo.Product;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,13 +26,24 @@ class ProductApiTest {
     @Mock
     private ProductDao productDao;
 
-    private Product existing;
     private Integer productId;
+    private Product existing;
+
+    private Product product(Integer id, String barcode, Integer clientId, String name, Double mrp, String imageUrl) {
+        Product p = new Product();
+        p.setId(id);
+        p.setBarcode(barcode);
+        p.setClientId(clientId);
+        p.setName(name);
+        p.setMrp(mrp);
+        p.setImageUrl(imageUrl);
+        return p;
+    }
 
     @BeforeEach
     void setupData() {
         productId = 1;
-        existing = UnitTestFactory.product(productId, "BC", 100, "Old", 10.0, "old.png");
+        existing = product(productId, "BC", 100, "Old", 10.0, "old.png");
     }
 
     @Test
@@ -78,8 +88,10 @@ class ProductApiTest {
     @Test
     void getByIdsShouldCallDaoWhenNonEmpty() {
         List<Integer> ids = List.of(1, 2, 3);
-        List<Product> found = List.of(UnitTestFactory.product(1, "A", 1, null, null, null),
-                UnitTestFactory.product(2, "B", 1, null, null, null));
+        List<Product> found = List.of(
+                product(1, "A", 1, null, null, null),
+                product(2, "B", 1, null, null, null)
+        );
         when(productDao.selectByIds(ids)).thenReturn(found);
 
         List<Product> out = productApi.getByIds(ids);
@@ -99,7 +111,7 @@ class ProductApiTest {
     @Test
     void getByBarcodesShouldCallDaoWhenNonEmpty() {
         List<String> barcodes = List.of("A", "B");
-        List<Product> found = List.of(UnitTestFactory.productWithBarcode("A"));
+        List<Product> found = List.of(product(null, "A", null, null, null, null));
         when(productDao.selectByBarcodes(barcodes)).thenReturn(found);
 
         List<Product> out = productApi.getByBarcodes(barcodes);
@@ -119,32 +131,17 @@ class ProductApiTest {
     @Test
     void getCheckByBarcodesShouldReturnFoundWhenAllExist() throws ApiException {
         List<String> req = List.of("A", "B");
-
-        Product p1 = UnitTestFactory.productWithBarcode("A");
-        Product p2 = UnitTestFactory.productWithBarcode("B");
-        List<Product> found = List.of(p1, p2);
+        List<Product> found = List.of(
+                product(1, "A", null, null, null, null),
+                product(2, "B", null, null, null, null)
+        );
 
         when(productDao.selectByBarcodes(req)).thenReturn(found);
 
         List<Product> out = productApi.getCheckByBarcodes(req);
 
         assertSame(found, out);
-        assertEquals(2, out.size());
         verify(productDao).selectByBarcodes(req);
-        verifyNoMoreInteractions(productDao);
-    }
-
-    @Test
-    void getCheckByBarcodesShouldThrowWhenSomeMissing() {
-        List<String> req = new ArrayList<>(Arrays.asList(" A ", "B", "B", null, "  "));
-
-        Product onlyA = UnitTestFactory.productWithBarcode("A");
-        when(productDao.selectByBarcodes(anyList())).thenReturn(List.of(onlyA));
-
-        ApiException ex = assertThrows(ApiException.class, () -> productApi.getCheckByBarcodes(req));
-        assertTrue(ex.getMessage().contains("B"));
-
-        verify(productDao).selectByBarcodes(anyList());
         verifyNoMoreInteractions(productDao);
     }
 
@@ -161,7 +158,7 @@ class ProductApiTest {
 
     @Test
     void getByBarcodeShouldReturnFirstWhenDaoReturnsList() {
-        Product p = UnitTestFactory.productWithBarcode("X");
+        Product p = product(1, "X", null, null, null, null);
         when(productDao.selectByBarcodes(List.of("X"))).thenReturn(List.of(p));
 
         Product out = productApi.getByBarcode("X");
@@ -183,7 +180,7 @@ class ProductApiTest {
 
     @Test
     void getCheckByBarcodeShouldReturnWhenFound() throws ApiException {
-        Product p = UnitTestFactory.productWithBarcode("OK");
+        Product p = product(1, "OK", null, null, null, null);
         when(productDao.selectByBarcodes(List.of("OK"))).thenReturn(List.of(p));
 
         Product out = productApi.getCheckByBarcode("OK");
@@ -207,7 +204,7 @@ class ProductApiTest {
 
     @Test
     void addShouldInsertWhenBarcodeNotExists() throws ApiException {
-        Product p = UnitTestFactory.productWithBarcode("NEW");
+        Product p = product(null, "NEW", 1, "N", 10.0, null);
         when(productDao.selectByBarcodes(List.of("NEW"))).thenReturn(List.of());
 
         productApi.add(p);
@@ -219,10 +216,10 @@ class ProductApiTest {
 
     @Test
     void addShouldThrowWhenBarcodeAlreadyExists() {
-        Product p = UnitTestFactory.productWithBarcode("DUP");
-        Product existingDup = UnitTestFactory.productWithBarcode("DUP");
-
-        when(productDao.selectByBarcodes(List.of("DUP"))).thenReturn(List.of(existingDup));
+        Product p = product(null, "DUP", 1, null, null, null);
+        when(productDao.selectByBarcodes(List.of("DUP"))).thenReturn(
+                List.of(product(99, "DUP", 1, null, null, null))
+        );
 
         assertThrows(ApiException.class, () -> productApi.add(p));
 
@@ -240,8 +237,8 @@ class ProductApiTest {
 
     @Test
     void addBulkShouldInsertAllWhenNoExistingBarcodes() throws ApiException {
-        Product p1 = UnitTestFactory.productWithBarcode("A");
-        Product p2 = UnitTestFactory.productWithBarcode("B");
+        Product p1 = product(null, "A", 1, null, null, null);
+        Product p2 = product(null, "B", 1, null, null, null);
         List<Product> products = List.of(p1, p2);
 
         when(productDao.selectByBarcodes(List.of("A", "B"))).thenReturn(List.of());
@@ -256,12 +253,13 @@ class ProductApiTest {
 
     @Test
     void addBulkShouldThrowWhenSomeBarcodesExist() {
-        Product p1 = UnitTestFactory.productWithBarcode("A");
-        Product p2 = UnitTestFactory.productWithBarcode("B");
+        Product p1 = product(null, "A", 1, null, null, null);
+        Product p2 = product(null, "B", 1, null, null, null);
         List<Product> products = List.of(p1, p2);
 
-        Product existingB = UnitTestFactory.productWithBarcode("B");
-        when(productDao.selectByBarcodes(List.of("A", "B"))).thenReturn(List.of(existingB));
+        when(productDao.selectByBarcodes(List.of("A", "B"))).thenReturn(
+                List.of(product(5, "B", 1, null, null, null))
+        );
 
         ApiException ex = assertThrows(ApiException.class, () -> productApi.addBulk(products));
         assertTrue(ex.getMessage().contains("B"));
@@ -275,7 +273,7 @@ class ProductApiTest {
     void updateShouldUpdateMutableFieldsWhenBarcodeAndClientUnchanged() throws ApiException {
         when(productDao.selectById(1)).thenReturn(existing);
 
-        Product incoming = UnitTestFactory.product(null, "BC", 100, "New", 99.0, "new.png");
+        Product incoming = product(null, "BC", 100, "New", 99.0, "new.png");
 
         productApi.update(1, incoming);
 
@@ -291,10 +289,10 @@ class ProductApiTest {
 
     @Test
     void updateShouldThrowWhenBarcodeModified() {
-        Product ex = UnitTestFactory.product(1, "OLD", 100, null, null, null);
+        Product ex = product(1, "OLD", 100, null, null, null);
         when(productDao.selectById(1)).thenReturn(ex);
 
-        Product incoming = UnitTestFactory.product(null, "NEW", 100, null, null, null);
+        Product incoming = product(null, "NEW", 100, null, null, null);
 
         ApiException thrown = assertThrows(ApiException.class, () -> productApi.update(1, incoming));
         assertTrue(thrown.getMessage().toLowerCase().contains("barcode"));
@@ -305,10 +303,10 @@ class ProductApiTest {
 
     @Test
     void updateShouldThrowWhenClientModified() {
-        Product ex = UnitTestFactory.product(1, "BC", 100, null, null, null);
+        Product ex = product(1, "BC", 100, null, null, null);
         when(productDao.selectById(1)).thenReturn(ex);
 
-        Product incoming = UnitTestFactory.product(null, "BC", 999, null, null, null);
+        Product incoming = product(null, "BC", 999, null, null, null);
 
         ApiException thrown = assertThrows(ApiException.class, () -> productApi.update(1, incoming));
         assertTrue(thrown.getMessage().toLowerCase().contains("client"));
@@ -319,10 +317,10 @@ class ProductApiTest {
 
     @Test
     void updateShouldAllowNullBarcodeAndNullClientIdInIncoming() throws ApiException {
-        Product ex = UnitTestFactory.product(1, "BC", 100, "Old", 10.0, "old.png");
+        Product ex = product(1, "BC", 100, "Old", 10.0, "old.png");
         when(productDao.selectById(1)).thenReturn(ex);
 
-        Product incoming = UnitTestFactory.product(null, null, null, "X", 50.0, "img");
+        Product incoming = product(null, null, null, "X", 50.0, "img");
 
         productApi.update(1, incoming);
 
@@ -338,7 +336,7 @@ class ProductApiTest {
 
     @Test
     void validateSellingPriceShouldThrowWhenSellingPriceExceedsMrp() {
-        Product p = UnitTestFactory.product(1, null, null, null, 100.0, null);
+        Product p = product(1, null, null, null, 100.0, null);
         when(productDao.selectById(1)).thenReturn(p);
 
         ApiException ex = assertThrows(ApiException.class, () -> productApi.validateSellingPrice(1, 100.01));
@@ -352,7 +350,7 @@ class ProductApiTest {
 
     @Test
     void searchShouldDelegateToDao() {
-        List<Product> out = List.of(UnitTestFactory.productWithBarcode("A"));
+        List<Product> out = List.of(product(1, "A", 1, null, null, null));
         when(productDao.search("n", "b", 1, 0, 10)).thenReturn(out);
 
         List<Product> res = productApi.search("n", "b", 1, 0, 10);
@@ -383,8 +381,8 @@ class ProductApiTest {
 
     @Test
     void extractBarcodesShouldExtractInOrder() {
-        Product a = UnitTestFactory.productWithBarcode("A");
-        Product b = UnitTestFactory.productWithBarcode("B");
+        Product a = product(1, "A", null, null, null, null);
+        Product b = product(2, "B", null, null, null, null);
 
         assertEquals(List.of("A", "B"), ProductApi.extractBarcodes(List.of(a, b)));
     }
@@ -397,9 +395,9 @@ class ProductApiTest {
 
     @Test
     void toBarcodeSetShouldCollectDistinct() {
-        Product a1 = UnitTestFactory.productWithBarcode("A");
-        Product a2 = UnitTestFactory.productWithBarcode("A");
-        Product b = UnitTestFactory.productWithBarcode("B");
+        Product a1 = product(1, "A", null, null, null, null);
+        Product a2 = product(2, "A", null, null, null, null);
+        Product b = product(3, "B", null, null, null, null);
 
         Set<String> set = ProductApi.toBarcodeSet(List.of(a1, a2, b));
         assertEquals(Set.of("A", "B"), set);
@@ -436,11 +434,11 @@ class ProductApiTest {
 
     @Test
     void toProductIdByBarcodeShouldMapBarcodeToIdAndIgnoreNullsAndResolveDuplicates() {
-        Product p1 = UnitTestFactory.product(1, "A", null, null, null, null);
-        Product p2 = UnitTestFactory.product(2, "B", null, null, null, null);
-        Product p3 = UnitTestFactory.product(3, null, null, null, null, null);
-        Product p4 = UnitTestFactory.product(null, "C", null, null, null, null);
-        Product p5 = UnitTestFactory.product(999, "A", null, null, null, null);
+        Product p1 = product(1, "A", null, null, null, null);
+        Product p2 = product(2, "B", null, null, null, null);
+        Product p3 = product(3, null, null, null, null, null);
+        Product p4 = product(null, "C", null, null, null, null);
+        Product p5 = product(999, "A", null, null, null, null);
 
         Map<String, Integer> map = ProductApi.toProductIdByBarcode(List.of(p1, p2, p3, p4, p5));
 

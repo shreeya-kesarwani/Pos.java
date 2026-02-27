@@ -4,7 +4,7 @@ import com.pos.dao.OrderDao;
 import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.Order;
 import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,14 +14,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import({OrderDao.class, TestFactory.class})
+@Import({OrderDao.class})
 class OrderDaoTest extends AbstractDaoTest {
 
     @Autowired
     private OrderDao dao;
-
-    @Autowired
-    private TestFactory testFactory;
 
     @BeforeEach
     void setupData() {
@@ -30,8 +27,9 @@ class OrderDaoTest extends AbstractDaoTest {
 
     @Test
     void searchWhenStatusProvided() {
-        testFactory.createOrder(OrderStatus.CREATED, "inv");
-        Order invoiced = testFactory.createOrder(OrderStatus.INVOICED, "inv");
+        dao.insert(TestEntities.newOrder(OrderStatus.CREATED, "inv"));
+        Order invoiced = TestEntities.newOrder(OrderStatus.INVOICED, "inv");
+        dao.insert(invoiced);
         em.clear();
 
         List<Order> out = dao.search(null, null, null, OrderStatus.INVOICED, 0, 10);
@@ -42,9 +40,9 @@ class OrderDaoTest extends AbstractDaoTest {
 
     @Test
     void getCountWhenFiltersProvided() {
-        testFactory.createOrder(OrderStatus.INVOICED, "inv");
-        testFactory.createOrder(OrderStatus.INVOICED, "inv");
-        testFactory.createOrder(OrderStatus.CREATED, "inv");
+        dao.insert(TestEntities.newOrder(OrderStatus.INVOICED, "inv"));
+        dao.insert(TestEntities.newOrder(OrderStatus.INVOICED, "inv"));
+        dao.insert(TestEntities.newOrder(OrderStatus.CREATED, "inv"));
         em.clear();
 
         assertEquals(2, dao.getCount(null, null, null, OrderStatus.INVOICED));

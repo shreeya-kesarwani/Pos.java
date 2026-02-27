@@ -7,7 +7,6 @@ import com.pos.exception.ApiException;
 import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,23 +29,30 @@ class OrderApiTest {
     @InjectMocks
     private OrderApi orderApi;
 
-    @Mock
-    private OrderDao orderDao;
-
-    @Mock
-    private OrderItemDao orderItemDao;
-
-    private OrderItem validItem1;
-    private OrderItem validItem2;
+    @Mock private OrderDao orderDao;
+    @Mock private OrderItemDao orderItemDao;
 
     private ZonedDateTime start;
     private ZonedDateTime end;
 
+    private OrderItem item(Integer productId, Integer qty, Double sp) {
+        OrderItem oi = new OrderItem();
+        oi.setProductId(productId);
+        oi.setQuantity(qty);
+        oi.setSellingPrice(sp);
+        return oi;
+    }
+
+    private Order order(Integer id, OrderStatus status, String invoicePath) {
+        Order o = new Order();
+        o.setId(id);
+        o.setStatus(status);
+        o.setInvoicePath(invoicePath);
+        return o;
+    }
+
     @BeforeEach
     void setupData() {
-        validItem1 = UnitTestFactory.orderItem(11, 2, 10.0);
-        validItem2 = UnitTestFactory.orderItem(22, 1, 5.0);
-
         start = ZonedDateTime.now().minusDays(1);
         end = ZonedDateTime.now();
     }
@@ -67,9 +73,7 @@ class OrderApiTest {
 
     @Test
     void createShouldThrowWhenProductIdNull() {
-        OrderItem item = UnitTestFactory.orderItem(null, 1, 10.0);
-
-        ApiException ex = assertThrows(ApiException.class, () -> orderApi.create(List.of(item)));
+        ApiException ex = assertThrows(ApiException.class, () -> orderApi.create(List.of(item(null, 1, 10.0))));
         assertTrue(ex.getMessage().contains(PRODUCT_NOT_FOUND.value()));
         verifyNoInteractions(orderDao, orderItemDao);
     }
@@ -77,15 +81,15 @@ class OrderApiTest {
     @Test
     void createShouldThrowWhenQuantityNullOrNonPositive() {
         assertTrue(assertThrows(ApiException.class,
-                () -> orderApi.create(List.of(UnitTestFactory.orderItem(1, null, 10.0))))
+                () -> orderApi.create(List.of(item(1, null, 10.0))))
                 .getMessage().contains(QUANTITY_MUST_BE_POSITIVE.value()));
 
         assertTrue(assertThrows(ApiException.class,
-                () -> orderApi.create(List.of(UnitTestFactory.orderItem(1, 0, 10.0))))
+                () -> orderApi.create(List.of(item(1, 0, 10.0))))
                 .getMessage().contains(QUANTITY_MUST_BE_POSITIVE.value()));
 
         assertTrue(assertThrows(ApiException.class,
-                () -> orderApi.create(List.of(UnitTestFactory.orderItem(1, -1, 10.0))))
+                () -> orderApi.create(List.of(item(1, -1, 10.0))))
                 .getMessage().contains(QUANTITY_MUST_BE_POSITIVE.value()));
 
         verifyNoInteractions(orderDao, orderItemDao);
@@ -94,11 +98,11 @@ class OrderApiTest {
     @Test
     void createShouldThrowWhenSellingPriceNullOrNegative() {
         assertTrue(assertThrows(ApiException.class,
-                () -> orderApi.create(List.of(UnitTestFactory.orderItem(1, 1, null))))
+                () -> orderApi.create(List.of(item(1, 1, null))))
                 .getMessage().contains(SELLING_PRICE_CANNOT_BE_NEGATIVE.value()));
 
         assertTrue(assertThrows(ApiException.class,
-                () -> orderApi.create(List.of(UnitTestFactory.orderItem(1, 1, -0.01))))
+                () -> orderApi.create(List.of(item(1, 1, -0.01))))
                 .getMessage().contains(SELLING_PRICE_CANNOT_BE_NEGATIVE.value()));
 
         verifyNoInteractions(orderDao, orderItemDao);
@@ -106,13 +110,17 @@ class OrderApiTest {
 
     @Test
     void createShouldInsertOrderThenInsertItemsAndReturnOrderId() throws ApiException {
+        // Important: insert sets the id on the managed entity (simulate DB behavior)
         doAnswer(invocation -> {
             Order o = invocation.getArgument(0);
             o.setId(999);
             return null;
         }).when(orderDao).insert(any(Order.class));
 
-        Integer orderId = orderApi.create(List.of(validItem1, validItem2));
+        OrderItem i1 = item(11, 2, 10.0);
+        OrderItem i2 = item(22, 1, 5.0);
+
+        Integer orderId = orderApi.create(List.of(i1, i2));
 
         assertEquals(999, orderId);
 
@@ -120,18 +128,19 @@ class OrderApiTest {
         verify(orderDao).insert(orderCaptor.capture());
         assertEquals(OrderStatus.CREATED, orderCaptor.getValue().getStatus());
 
-        verify(orderItemDao).insert(validItem1);
-        verify(orderItemDao).insert(validItem2);
+        // API should assign orderId into each item before insert
+        assertEquals(999, i1.getOrderId());
+        assertEquals(999, i2.getOrderId());
 
-        assertEquals(999, validItem1.getOrderId());
-        assertEquals(999, validItem2.getOrderId());
+        verify(orderItemDao).insert(i1);
+        verify(orderItemDao).insert(i2);
 
         verifyNoMoreInteractions(orderDao, orderItemDao);
     }
 
     @Test
     void getCheckShouldReturnOrderWhenFound() throws ApiException {
-        Order o = UnitTestFactory.order(10, OrderStatus.CREATED, null);
+        Order o = order(10, OrderStatus.CREATED, null);
         when(orderDao.selectById(10)).thenReturn(o);
 
         Order out = orderApi.getCheck(10);
@@ -167,8 +176,19 @@ class OrderApiTest {
     }
 
     @Test
+    void generateInvoiceShouldThrowWhenOrderNotFound() {
+        when(orderDao.selectById(1)).thenReturn(null);
+
+        assertThrows(ApiException.class, () -> orderApi.generateInvoice(1, "/tmp/inv.pdf"));
+
+        verify(orderDao).selectById(1);
+        verifyNoMoreInteractions(orderDao);
+        verifyNoInteractions(orderItemDao);
+    }
+
+    @Test
     void generateInvoiceShouldSetInvoicePathAndStatusInvoiced() throws ApiException {
-        Order o = UnitTestFactory.order(1, OrderStatus.CREATED, null);
+        Order o = order(1, OrderStatus.CREATED, null);
         when(orderDao.selectById(1)).thenReturn(o);
 
         orderApi.generateInvoice(1, "/tmp/inv.pdf");
@@ -183,7 +203,7 @@ class OrderApiTest {
 
     @Test
     void searchShouldCallDaoSearch() {
-        List<Order> expected = List.of(UnitTestFactory.order(1, OrderStatus.CREATED, null));
+        List<Order> expected = List.of(order(1, OrderStatus.CREATED, null));
         when(orderDao.search(1, start, end, OrderStatus.CREATED, 0, 10)).thenReturn(expected);
 
         List<Order> out = orderApi.search(1, start, end, OrderStatus.CREATED, 0, 10);
@@ -207,11 +227,11 @@ class OrderApiTest {
     }
 
     @Test
-    void getItemsByOrderIdShouldCallDao() throws ApiException {
-        Order o = UnitTestFactory.order(5, OrderStatus.CREATED, null);
+    void getItemsByOrderIdShouldCallDaos() throws ApiException {
+        Order o = order(5, OrderStatus.CREATED, null);
         when(orderDao.selectById(5)).thenReturn(o);
 
-        List<OrderItem> expected = List.of(UnitTestFactory.orderItem(1, 1, 10.0));
+        List<OrderItem> expected = List.of(item(1, 1, 10.0));
         when(orderItemDao.selectByOrderId(5)).thenReturn(expected);
 
         List<OrderItem> out = orderApi.getItemsByOrderId(5);
@@ -240,10 +260,7 @@ class OrderApiTest {
 
     @Test
     void getCheckItemsByOrderIdShouldReturnItemsWhenFound() throws ApiException {
-        List<OrderItem> expected = List.of(
-                UnitTestFactory.orderItem(1, 1, 10.0),
-                UnitTestFactory.orderItem(2, 2, 20.0)
-        );
+        List<OrderItem> expected = List.of(item(1, 1, 10.0), item(2, 2, 20.0));
         when(orderItemDao.selectByOrderId(9)).thenReturn(expected);
 
         List<OrderItem> out = orderApi.getCheckItemsByOrderId(9);
@@ -256,7 +273,7 @@ class OrderApiTest {
 
     @Test
     void getItemsByOrderIdsShouldCallDao() {
-        List<OrderItem> expected = List.of(UnitTestFactory.orderItem(1, 1, 10.0));
+        List<OrderItem> expected = List.of(item(1, 1, 10.0));
         when(orderItemDao.selectByOrderIds(List.of(1, 2))).thenReturn(expected);
 
         List<OrderItem> out = orderApi.getItemsByOrderIds(List.of(1, 2));

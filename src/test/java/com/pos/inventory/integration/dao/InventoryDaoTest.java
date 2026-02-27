@@ -3,7 +3,7 @@ package com.pos.inventory.integration.dao;
 import com.pos.dao.InventoryDao;
 import com.pos.pojo.Inventory;
 import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,14 +13,11 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import({InventoryDao.class, TestFactory.class})
+@Import({InventoryDao.class})
 class InventoryDaoTest extends AbstractDaoTest {
 
     @Autowired
     private InventoryDao dao;
-
-    @Autowired
-    private TestFactory testFactory;
 
     private List<Integer> productIds4;
 
@@ -36,8 +33,9 @@ class InventoryDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByProductIdWhenExists() {
-        Inventory i = testFactory.createInventory(101, 5);
-        testFactory.createInventory(102, 10);
+        Inventory i = TestEntities.newInventory(101, 5);
+        dao.insert(i);
+        dao.insert(TestEntities.newInventory(102, 10));
         em.clear();
 
         Inventory out = dao.selectByProductId(101);
@@ -49,9 +47,9 @@ class InventoryDaoTest extends AbstractDaoTest {
 
     @Test
     void findByProductIdsWhenNull() {
-        testFactory.createInventory(1, 1);
-        testFactory.createInventory(2, 2);
-        testFactory.createInventory(3, 3);
+        dao.insert(TestEntities.newInventory(1, 1));
+        dao.insert(TestEntities.newInventory(2, 2));
+        dao.insert(TestEntities.newInventory(3, 3));
         em.clear();
 
         assertEquals(3, dao.findByProductIds(null, 0, 10).size());
@@ -59,9 +57,9 @@ class InventoryDaoTest extends AbstractDaoTest {
 
     @Test
     void getCountByProductIdsWhenFiltered() {
-        testFactory.createInventory(10, 1);
-        testFactory.createInventory(20, 2);
-        testFactory.createInventory(30, 3);
+        dao.insert(TestEntities.newInventory(10, 1));
+        dao.insert(TestEntities.newInventory(20, 2));
+        dao.insert(TestEntities.newInventory(30, 3));
         em.clear();
 
         assertEquals(2L, dao.getCountByProductIds(List.of(10, 20)));
@@ -70,10 +68,10 @@ class InventoryDaoTest extends AbstractDaoTest {
     @Test
     void findByProductIdsWhenFilteredAndPaged() {
         // product_id is UNIQUE in pos_inventory, so every inventory row must have a unique productId
-        testFactory.createInventory(10, 1);
-        testFactory.createInventory(20, 2);
-        testFactory.createInventory(30, 3);
-        testFactory.createInventory(40, 4);
+        dao.insert(TestEntities.newInventory(10, 1));
+        dao.insert(TestEntities.newInventory(20, 2));
+        dao.insert(TestEntities.newInventory(30, 3));
+        dao.insert(TestEntities.newInventory(40, 4));
         em.clear();
 
         // page 0 size 1 => 1 row
@@ -91,8 +89,8 @@ class InventoryDaoTest extends AbstractDaoTest {
 
     @Test
     void getCountByProductIdsWhenNullOrEmptyUsesTotalCount() {
-        testFactory.createInventory(1, 1);
-        testFactory.createInventory(2, 2);
+        dao.insert(TestEntities.newInventory(1, 1));
+        dao.insert(TestEntities.newInventory(2, 2));
         em.clear();
 
         assertEquals(2L, dao.getCountByProductIds(null));
@@ -101,8 +99,10 @@ class InventoryDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByProductIdsHandlesEmptyAndNonEmpty() {
-        Inventory a = testFactory.createInventory(10, 1);
-        Inventory b = testFactory.createInventory(20, 2);
+        Inventory a = TestEntities.newInventory(10, 1);
+        Inventory b = TestEntities.newInventory(20, 2);
+        dao.insert(a);
+        dao.insert(b);
         em.clear();
 
         assertEquals(List.of(), dao.selectByProductIds(null));
@@ -111,15 +111,15 @@ class InventoryDaoTest extends AbstractDaoTest {
         List<Inventory> out = dao.selectByProductIds(List.of(10, 20));
         assertEquals(2, out.size());
 
-        // Order is typically stable here because query uses IN (...) ordering is not guaranteed by SQL,
-        // so assert by ids, not index.
+        // IN (...) ordering isn't guaranteed; assert by ids.
         assertTrue(out.stream().anyMatch(x -> x.getId().equals(a.getId())));
         assertTrue(out.stream().anyMatch(x -> x.getId().equals(b.getId())));
     }
 
     @Test
     void selectByIdReturnsEntity() {
-        Inventory i = testFactory.createInventory(999, 7);
+        Inventory i = TestEntities.newInventory(999, 7);
+        dao.insert(i);
         em.clear();
 
         Inventory out = dao.selectById(i.getId());

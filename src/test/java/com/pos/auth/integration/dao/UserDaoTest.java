@@ -4,7 +4,7 @@ import com.pos.dao.UserDao;
 import com.pos.model.constants.UserRole;
 import com.pos.pojo.User;
 import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,22 +14,23 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import({UserDao.class, TestFactory.class})
+@Import({UserDao.class})
 class UserDaoTest extends AbstractDaoTest {
 
     @Autowired
     private UserDao userDao;
-
-    @Autowired
-    private TestFactory testFactory;
 
     private User operatorUser;
     private User supervisorUser;
 
     @BeforeEach
     void setupData() {
-        operatorUser = testFactory.createUser("a@b.com", "hash", UserRole.OPERATOR);
-        supervisorUser = testFactory.createUser("id@b.com", "hash", UserRole.SUPERVISOR);
+        operatorUser = TestEntities.newUser("a@b.com", "hash", UserRole.OPERATOR);
+        userDao.insert(operatorUser);
+
+        supervisorUser = TestEntities.newUser("id@b.com", "hash", UserRole.SUPERVISOR);
+        userDao.insert(supervisorUser);
+
         em.clear();
     }
 

@@ -4,7 +4,6 @@ import com.pos.api.ClientApi;
 import com.pos.dao.ClientDao;
 import com.pos.exception.ApiException;
 import com.pos.pojo.Client;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,12 +33,26 @@ class ClientApiTest {
     private String existingName;
     private String existingEmail;
 
+    private Client client(Integer id, String name, String email) {
+        Client c = new Client();
+        c.setId(id);
+        c.setName(name);
+        c.setEmail(email);
+        return c;
+    }
+
+    private Client clientWithName(String name) {
+        Client c = new Client();
+        c.setName(name);
+        return c;
+    }
+
     @BeforeEach
     void setupData() {
         clientId = 1;
         existingName = "old";
         existingEmail = "old@mail";
-        existingClient = UnitTestFactory.client(clientId, existingName, existingEmail);
+        existingClient = client(clientId, existingName, existingEmail);
     }
 
     @Test
@@ -61,6 +74,7 @@ class ClientApiTest {
 
         assertSame(existingClient, out);
         verify(clientDao).selectById(10);
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -70,7 +84,9 @@ class ClientApiTest {
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.getCheck(99));
         assertTrue(ex.getMessage().contains(CLIENT_ID_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("99"));
+
         verify(clientDao).selectById(99);
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -81,6 +97,7 @@ class ClientApiTest {
 
         assertSame(existingClient, out);
         verify(clientDao).selectByName("abc");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -99,6 +116,7 @@ class ClientApiTest {
 
         assertSame(existingClient, out);
         verify(clientDao).selectByName("c1");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -108,12 +126,14 @@ class ClientApiTest {
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.getCheckByName("missing"));
         assertTrue(ex.getMessage().contains(CLIENT_NAME_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("missing"));
+
         verify(clientDao).selectByName("missing");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
     void addShouldInsertWhenNameNotExists() throws ApiException {
-        Client incoming = UnitTestFactory.clientWithName("new");
+        Client incoming = clientWithName("new");
         when(clientDao.selectByName("new")).thenReturn(null);
 
         clientApi.add(incoming);
@@ -125,8 +145,8 @@ class ClientApiTest {
 
     @Test
     void addShouldThrowWhenClientAlreadyExists() {
-        Client incoming = UnitTestFactory.clientWithName("dup");
-        when(clientDao.selectByName("dup")).thenReturn(UnitTestFactory.client(2, "dup", "x@mail"));
+        Client incoming = clientWithName("dup");
+        when(clientDao.selectByName("dup")).thenReturn(client(2, "dup", "x@mail"));
 
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.add(incoming));
         assertTrue(ex.getMessage().contains(CLIENT_ALREADY_EXISTS.value()));
@@ -134,6 +154,7 @@ class ClientApiTest {
 
         verify(clientDao).selectByName("dup");
         verify(clientDao, never()).insert(any());
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -141,7 +162,7 @@ class ClientApiTest {
         when(clientDao.selectById(clientId)).thenReturn(existingClient);
         when(clientDao.selectByName("newName")).thenReturn(null);
 
-        Client incoming = UnitTestFactory.client(null, "newName", "new@mail");
+        Client incoming = client(null, "newName", "new@mail");
 
         clientApi.update(clientId, incoming);
 
@@ -150,16 +171,17 @@ class ClientApiTest {
 
         verify(clientDao).selectById(clientId);
         verify(clientDao).selectByName("newName");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
     void updateShouldAllowSameNameWhenOtherIsSameClientId() throws ApiException {
         when(clientDao.selectById(clientId)).thenReturn(existingClient);
 
-        Client other = UnitTestFactory.client(clientId, "same", "ignore@mail");
+        Client other = client(clientId, "same", "ignore@mail");
         when(clientDao.selectByName("same")).thenReturn(other);
 
-        Client incoming = UnitTestFactory.client(null, "same", "x@mail");
+        Client incoming = client(null, "same", "x@mail");
 
         clientApi.update(clientId, incoming);
 
@@ -168,16 +190,17 @@ class ClientApiTest {
 
         verify(clientDao).selectById(clientId);
         verify(clientDao).selectByName("same");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
     void updateShouldThrowWhenNameTakenByOtherClient() {
         when(clientDao.selectById(clientId)).thenReturn(existingClient);
 
-        Client other = UnitTestFactory.client(2, "taken", "x@mail");
+        Client other = client(2, "taken", "x@mail");
         when(clientDao.selectByName("taken")).thenReturn(other);
 
-        Client incoming = UnitTestFactory.clientWithName("taken");
+        Client incoming = clientWithName("taken");
 
         ApiException ex = assertThrows(ApiException.class, () -> clientApi.update(clientId, incoming));
         assertTrue(ex.getMessage().contains(CLIENT_NAME_TAKEN.value()));
@@ -185,18 +208,20 @@ class ClientApiTest {
 
         verify(clientDao).selectById(clientId);
         verify(clientDao).selectByName("taken");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
     void updateShouldThrowWhenClientIdNotFound() {
         when(clientDao.selectById(404)).thenReturn(null);
 
-        Client incoming = UnitTestFactory.clientWithName("x");
+        Client incoming = clientWithName("x");
 
         assertThrows(ApiException.class, () -> clientApi.update(404, incoming));
 
         verify(clientDao).selectById(404);
         verify(clientDao, never()).selectByName(any());
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -208,6 +233,7 @@ class ClientApiTest {
 
         assertSame(expected, out);
         verify(clientDao).searchByParams(1, "n", "e", 0, 10);
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -218,6 +244,7 @@ class ClientApiTest {
 
         assertEquals(5L, out);
         verify(clientDao).getCount(1, "n", "e");
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -230,13 +257,14 @@ class ClientApiTest {
     @Test
     void getByNamesShouldDelegateWhenNonEmpty() {
         List<String> names = List.of("a", "b");
-        List<Client> expected = List.of(existingClient, UnitTestFactory.client(2, "b", "b@mail"));
+        List<Client> expected = List.of(existingClient, client(2, "b", "b@mail"));
         when(clientDao.selectByNames(names)).thenReturn(expected);
 
         List<Client> out = clientApi.getByNames(names);
 
         assertSame(expected, out);
         verify(clientDao).selectByNames(names);
+        verifyNoMoreInteractions(clientDao);
     }
 
     @Test
@@ -256,5 +284,6 @@ class ClientApiTest {
 
         assertSame(expected, out);
         verify(clientDao).selectByIds(ids);
+        verifyNoMoreInteractions(clientDao);
     }
 }

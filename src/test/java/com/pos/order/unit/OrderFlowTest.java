@@ -6,7 +6,6 @@ import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.flow.OrderFlow;
 import com.pos.pojo.OrderItem;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +19,6 @@ import java.util.List;
 import static com.pos.model.constants.ErrorMessages.NO_ORDER_ITEMS_FOUND;
 import static com.pos.model.constants.ErrorMessages.PRODUCT_NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -36,10 +34,18 @@ class OrderFlowTest {
     private OrderItem i1;
     private OrderItem i2;
 
+    private OrderItem item(Integer productId, Integer qty, Double sp) {
+        OrderItem oi = new OrderItem();
+        oi.setProductId(productId);
+        oi.setQuantity(qty);
+        oi.setSellingPrice(sp);
+        return oi;
+    }
+
     @BeforeEach
     void setupData() {
-        i1 = UnitTestFactory.orderItem(101, 2, 50.0);
-        i2 = UnitTestFactory.orderItem(202, 1, 10.0);
+        i1 = item(101, 2, 50.0);
+        i2 = item(202, 1, 10.0);
     }
 
     @Test
@@ -58,30 +64,28 @@ class OrderFlowTest {
 
     @Test
     void createOrder_shouldThrow_whenAnyItemHasNullProductId_andStopProcessing() {
-        OrderItem item = UnitTestFactory.orderItem(null, 2, 10.0);
+        OrderItem bad = item(null, 2, 10.0);
 
-        ApiException ex = assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(item)));
+        ApiException ex = assertThrows(ApiException.class, () -> orderFlow.createOrder(List.of(bad)));
         assertTrue(ex.getMessage().contains(PRODUCT_NOT_FOUND.value()));
 
         verifyNoInteractions(productApi, inventoryApi, orderApi);
     }
-//todo: write a happy flow test to check if the order is created or not, dont remove this add new
+
+    //todo: write a happy flow test to check if the order is created or not, dont remove this add new
     @Test
-    void createOrder_shouldValidatePriceAndReduceInventory_forEachItem_thenCreateOrder() throws ApiException {
+    void createOrder_happyFlow_shouldReturnOrderId_andCallDepsInOrder() throws ApiException {
         when(orderApi.create(List.of(i1, i2))).thenReturn(999);
 
-        Integer orderId = orderFlow.createOrder(List.of(i1, i2));
+        Integer out = orderFlow.createOrder(List.of(i1, i2));
 
-        assertEquals(999, orderId);
-//todo: result of this calls are not verified and mocked, mock for product.get
+        assertEquals(999, out);
+
         InOrder inOrder = inOrder(productApi, inventoryApi, orderApi);
-
         inOrder.verify(productApi).validateSellingPrice(101, 50.0);
         inOrder.verify(inventoryApi).reduceInventory(101, 2);
-
         inOrder.verify(productApi).validateSellingPrice(202, 10.0);
         inOrder.verify(inventoryApi).reduceInventory(202, 1);
-
         inOrder.verify(orderApi).create(List.of(i1, i2));
 
         verifyNoMoreInteractions(orderApi, inventoryApi, productApi);
@@ -89,7 +93,7 @@ class OrderFlowTest {
 
     @Test
     void createOrder_shouldNotCallOrderCreate_whenValidationFails() throws ApiException {
-        OrderItem expensive = UnitTestFactory.orderItem(101, 2, 5000.0);
+        OrderItem expensive = item(101, 2, 5000.0);
 
         doThrow(new ApiException("selling price exceeds mrp"))
                 .when(productApi).validateSellingPrice(101, 5000.0);

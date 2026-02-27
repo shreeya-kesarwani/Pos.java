@@ -1,11 +1,12 @@
 package com.pos.order.integration.dao;
 
+import com.pos.dao.OrderDao;
 import com.pos.dao.OrderItemDao;
 import com.pos.model.constants.OrderStatus;
 import com.pos.pojo.Order;
 import com.pos.pojo.OrderItem;
 import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,14 +16,14 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import({OrderItemDao.class, TestFactory.class})
+@Import({OrderItemDao.class, OrderDao.class})
 class OrderItemDaoTest extends AbstractDaoTest {
 
     @Autowired
     private OrderItemDao dao;
 
     @Autowired
-    private TestFactory testFactory;
+    private OrderDao orderDao;
 
     @BeforeEach
     void setupData() {
@@ -31,26 +32,19 @@ class OrderItemDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByOrderIdWhenExists() {
-        Order o10 = testFactory.createOrder(OrderStatus.CREATED, "inv");
-        Order o11 = testFactory.createOrder(OrderStatus.CREATED, "inv");
+        Order o10 = TestEntities.newOrder(OrderStatus.CREATED, "inv");
+        Order o11 = TestEntities.newOrder(OrderStatus.CREATED, "inv");
+        orderDao.insert(o10);
+        orderDao.insert(o11);
 
-        OrderItem a = new OrderItem();
-        a.setProductId(101);
-        a.setQuantity(2);
-        a.setSellingPrice(50.0);
+        OrderItem a = TestEntities.newOrderItem(o10.getId(), 101, 2, 50.0);
+        OrderItem b = TestEntities.newOrderItem(o10.getId(), 102, 1, 20.0);
+        OrderItem c = TestEntities.newOrderItem(o11.getId(), 103, 5, 10.0);
 
-        OrderItem b = new OrderItem();
-        b.setProductId(102);
-        b.setQuantity(1);
-        b.setSellingPrice(20.0);
+        dao.insert(a);
+        dao.insert(b);
+        dao.insert(c);
 
-        OrderItem c = new OrderItem();
-        c.setProductId(103);
-        c.setQuantity(5);
-        c.setSellingPrice(10.0);
-
-        testFactory.createOrderItems(o10.getId(), List.of(a, b));
-        testFactory.createOrderItems(o11.getId(), List.of(c));
         em.clear();
 
         List<OrderItem> out = dao.selectByOrderId(o10.getId());
@@ -62,34 +56,28 @@ class OrderItemDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByOrderIdsWhenMultipleProvided() {
-        Order o10 = testFactory.createOrder(OrderStatus.CREATED, "inv");
-        Order o11 = testFactory.createOrder(OrderStatus.CREATED, "inv");
-        Order o12 = testFactory.createOrder(OrderStatus.CREATED, "inv");
+        Order o10 = TestEntities.newOrder(OrderStatus.CREATED, "inv");
+        Order o11 = TestEntities.newOrder(OrderStatus.CREATED, "inv");
+        Order o12 = TestEntities.newOrder(OrderStatus.CREATED, "inv");
+        orderDao.insert(o10);
+        orderDao.insert(o11);
+        orderDao.insert(o12);
 
-        OrderItem i1 = new OrderItem();
-        i1.setProductId(101);
-        i1.setQuantity(2);
-        i1.setSellingPrice(50.0);
+        OrderItem i1 = TestEntities.newOrderItem(o10.getId(), 101, 2, 50.0);
+        OrderItem i2 = TestEntities.newOrderItem(o11.getId(), 102, 1, 20.0);
+        OrderItem i3 = TestEntities.newOrderItem(o12.getId(), 103, 1, 99.0);
 
-        OrderItem i2 = new OrderItem();
-        i2.setProductId(102);
-        i2.setQuantity(1);
-        i2.setSellingPrice(20.0);
+        dao.insert(i1);
+        dao.insert(i2);
+        dao.insert(i3);
 
-        OrderItem i3 = new OrderItem();
-        i3.setProductId(103);
-        i3.setQuantity(1);
-        i3.setSellingPrice(99.0);
-
-        testFactory.createOrderItems(o10.getId(), List.of(i1));
-        testFactory.createOrderItems(o11.getId(), List.of(i2));
-        testFactory.createOrderItems(o12.getId(), List.of(i3));
         em.clear();
 
         List<OrderItem> out = dao.selectByOrderIds(List.of(o10.getId(), o11.getId()));
 
         assertEquals(2, out.size());
-        assertTrue(out.stream().allMatch(x -> x.getOrderId().equals(o10.getId()) || x.getOrderId().equals(o11.getId())));
+        assertTrue(out.stream().allMatch(x ->
+                x.getOrderId().equals(o10.getId()) || x.getOrderId().equals(o11.getId())));
     }
 
     @Test

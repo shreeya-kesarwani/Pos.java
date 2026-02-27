@@ -5,7 +5,6 @@ import com.pos.dao.UserDao;
 import com.pos.exception.ApiException;
 import com.pos.model.constants.UserRole;
 import com.pos.pojo.User;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +40,14 @@ class UserUploadApiTest {
         newEmail = "n@n.com";
     }
 
+    private User user(String email, String passwordHash, UserRole role) {
+        User u = new User();
+        u.setEmail(email);
+        u.setPasswordHash(passwordHash);
+        u.setRole(role);
+        return u;
+    }
+
     @Test
     void bulkCreateOrUpdateShouldThrowWhenNullList() {
         ApiException ex = assertThrows(ApiException.class, () -> userUploadApi.bulkCreateOrUpdate(null));
@@ -57,7 +64,7 @@ class UserUploadApiTest {
 
     @Test
     void bulkCreateOrUpdateShouldThrowWhenEmailNull() {
-        User incoming = UnitTestFactory.user(null, "pass", UserRole.OPERATOR);
+        User incoming = user(null, "pass", UserRole.OPERATOR);
 
         ApiException ex = assertThrows(ApiException.class,
                 () -> userUploadApi.bulkCreateOrUpdate(List.of(incoming)));
@@ -68,7 +75,7 @@ class UserUploadApiTest {
 
     @Test
     void bulkCreateOrUpdateShouldThrowWhenEmailBlank() {
-        User incoming = UnitTestFactory.user("   ", "pass", UserRole.OPERATOR);
+        User incoming = user("   ", "pass", UserRole.OPERATOR);
 
         ApiException ex = assertThrows(ApiException.class,
                 () -> userUploadApi.bulkCreateOrUpdate(List.of(incoming)));
@@ -79,32 +86,33 @@ class UserUploadApiTest {
 
     @Test
     void bulkCreateOrUpdateShouldInsertNewUserAndEncodePassword() throws ApiException {
-        User incoming = UnitTestFactory.user("a@b.com", "plainPass", UserRole.SUPERVISOR);
+        User incoming = user("a@b.com", "plainPass", UserRole.SUPERVISOR);
         when(userDao.findByEmail("a@b.com")).thenReturn(Optional.empty());
 
         userUploadApi.bulkCreateOrUpdate(List.of(incoming));
 
         verify(userDao).findByEmail("a@b.com");
 
-        ArgumentCaptor<User> cap = ArgumentCaptor.forClass(User.class);
-        verify(userDao).insert(cap.capture());
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userDao).insert(userCaptor.capture());
+        User inserted = userCaptor.getValue();
 
-        User inserted = cap.getValue();
         assertEquals("a@b.com", inserted.getEmail());
         assertEquals(UserRole.SUPERVISOR, inserted.getRole());
+
         assertNotNull(inserted.getPasswordHash());
         assertNotEquals("plainPass", inserted.getPasswordHash());
-        assertTrue(inserted.getPasswordHash().startsWith("$2"));
+        assertTrue(inserted.getPasswordHash().startsWith("$2")); // bcrypt signature
 
         verifyNoMoreInteractions(userDao);
     }
 
     @Test
     void bulkCreateOrUpdateShouldUpdateExistingUserRoleAndNotInsert() throws ApiException {
-        User existing = UnitTestFactory.user("x@y.com", "$2b$10$somehash", UserRole.OPERATOR);
+        User existing = user("x@y.com", "$2b$10$somehash", UserRole.OPERATOR);
         when(userDao.findByEmail("x@y.com")).thenReturn(Optional.of(existing));
 
-        User incoming = UnitTestFactory.user("x@y.com", "ignoredPass", UserRole.SUPERVISOR);
+        User incoming = user("x@y.com", "ignoredPass", UserRole.SUPERVISOR);
 
         userUploadApi.bulkCreateOrUpdate(List.of(incoming));
 
@@ -116,27 +124,31 @@ class UserUploadApiTest {
 
     @Test
     void bulkCreateOrUpdateMixedListShouldInsertNewAndUpdateExisting() throws ApiException {
-        User existing = UnitTestFactory.user(existingEmail, "$2b$10$hash", UserRole.OPERATOR);
+        User existing = user(existingEmail, "$2b$10$hash", UserRole.OPERATOR);
+
         when(userDao.findByEmail(existingEmail)).thenReturn(Optional.of(existing));
         when(userDao.findByEmail(newEmail)).thenReturn(Optional.empty());
 
-        User incomingExisting = UnitTestFactory.user(existingEmail, "ignored", UserRole.SUPERVISOR);
-        User incomingNew = UnitTestFactory.user(newEmail, "plain", UserRole.OPERATOR);
+        User incomingExisting = user(existingEmail, "ignored", UserRole.SUPERVISOR);
+        User incomingNew = user(newEmail, "plain", UserRole.OPERATOR);
 
         userUploadApi.bulkCreateOrUpdate(List.of(incomingExisting, incomingNew));
 
+        // updated existing role
         assertEquals(UserRole.SUPERVISOR, existing.getRole());
 
         verify(userDao).findByEmail(existingEmail);
         verify(userDao).findByEmail(newEmail);
 
-        verify(userDao).insert(argThat(o -> {
-            if (!(o instanceof User u)) return false;
-            return newEmail.equals(u.getEmail())
-                    && u.getPasswordHash() != null
-                    && !u.getPasswordHash().equals("plain")
-                    && u.getPasswordHash().startsWith("$2");
-        }));
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userDao).insert(userCaptor.capture());
+        User inserted = userCaptor.getValue();
+
+        assertEquals(newEmail, inserted.getEmail());
+        assertEquals(UserRole.OPERATOR, inserted.getRole());
+        assertNotNull(inserted.getPasswordHash());
+        assertNotEquals("plain", inserted.getPasswordHash());
+        assertTrue(inserted.getPasswordHash().startsWith("$2"));
 
         verifyNoMoreInteractions(userDao);
     }

@@ -5,7 +5,6 @@ import com.pos.api.ProductApi;
 import com.pos.exception.ApiException;
 import com.pos.flow.InventoryFlow;
 import com.pos.pojo.Inventory;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +35,13 @@ class InventoryFlowTest {
     private int page;
     private int pageSize;
 
+    private Inventory inv(Integer productId, Integer qty) {
+        Inventory i = new Inventory();
+        i.setProductId(productId);
+        i.setQuantity(qty);
+        return i;
+    }
+
     @BeforeEach
     void setupData() {
         barcode = "B1";
@@ -47,10 +53,7 @@ class InventoryFlowTest {
     @Test
     void searchInventories_shouldCallProductApiThenInventoryApi() throws ApiException {
         List<Integer> productIds = List.of(10, 20);
-        List<Inventory> expected = List.of(
-                UnitTestFactory.inventory(10, 1),
-                UnitTestFactory.inventory(20, 2)
-        );
+        List<Inventory> expected = List.of(inv(10, 1), inv(20, 2));
 
         when(productApi.findProductIdsByBarcodeOrName(barcode, productName)).thenReturn(productIds);
         when(inventoryApi.findByProductIds(productIds, page, pageSize)).thenReturn(expected);

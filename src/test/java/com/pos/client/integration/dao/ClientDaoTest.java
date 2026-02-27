@@ -3,24 +3,21 @@ package com.pos.client.integration.dao;
 import com.pos.dao.ClientDao;
 import com.pos.pojo.Client;
 import com.pos.setup.AbstractDaoTest;
-import com.pos.setup.TestFactory;
+import com.pos.setup.TestEntities;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
 import java.util.List;
-//todo mock fixing in unit tests, test factory refactor
+
 import static org.junit.jupiter.api.Assertions.*;
 
-@Import({ClientDao.class, TestFactory.class})
+@Import({ClientDao.class})
 class ClientDaoTest extends AbstractDaoTest {
 
     @Autowired
     private ClientDao clientDao;
-
-    @Autowired
-    private TestFactory testFactory;
 
     private String acmeName;
     private String betaName;
@@ -33,7 +30,8 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByIdWhenExists() {
-        Client c = testFactory.createClient(acmeName, "a@acme.com");
+        Client c = TestEntities.newClient(acmeName, "a@acme.com");
+        clientDao.insert(c);
         em.clear();
 
         Client out = clientDao.selectById(c.getId());
@@ -49,7 +47,7 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByNameWhenExists() {
-        testFactory.createClient(acmeName, "a@acme.com");
+        clientDao.insert(TestEntities.newClient(acmeName, "a@acme.com"));
         em.clear();
 
         Client out = clientDao.selectByName(acmeName);
@@ -70,8 +68,10 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByNamesWhenMatch() {
-        Client c1 = testFactory.createClient(acmeName, "a@acme.com");
-        Client c2 = testFactory.createClient(betaName, "b@beta.com");
+        Client c1 = TestEntities.newClient(acmeName, "a@acme.com");
+        Client c2 = TestEntities.newClient(betaName, "b@beta.com");
+        clientDao.insert(c1);
+        clientDao.insert(c2);
         em.clear();
 
         List<Client> out = clientDao.selectByNames(List.of(acmeName, betaName));
@@ -83,7 +83,7 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByNamesIgnoresMissingNames() {
-        testFactory.createClient(acmeName, "a@acme.com");
+        clientDao.insert(TestEntities.newClient(acmeName, "a@acme.com"));
         em.clear();
 
         List<Client> out = clientDao.selectByNames(List.of(acmeName, "Missing"));
@@ -99,8 +99,10 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void selectByIdsWhenMatch() {
-        Client c1 = testFactory.createClient(acmeName, "a@acme.com");
-        Client c2 = testFactory.createClient(betaName, "b@beta.com");
+        Client c1 = TestEntities.newClient(acmeName, "a@acme.com");
+        Client c2 = TestEntities.newClient(betaName, "b@beta.com");
+        clientDao.insert(c1);
+        clientDao.insert(c2);
         em.clear();
 
         List<Client> out = clientDao.selectByIds(List.of(c1.getId(), c2.getId()));
@@ -115,9 +117,9 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void searchByParamsWhenNameFilter() {
-        testFactory.createClient("Acme One", "a1@acme.com");
-        testFactory.createClient("Acme Two", "a2@acme.com");
-        testFactory.createClient(betaName, "b@beta.com");
+        clientDao.insert(TestEntities.newClient("Acme One", "a1@acme.com"));
+        clientDao.insert(TestEntities.newClient("Acme Two", "a2@acme.com"));
+        clientDao.insert(TestEntities.newClient(betaName, "b@beta.com"));
         em.clear();
 
         List<Client> out = clientDao.searchByParams(null, "Acme", null, 0, 10);
@@ -127,8 +129,8 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void searchByParamsWhenEmailFilter() {
-        testFactory.createClient(acmeName, "a@acme.com");
-        testFactory.createClient(betaName, "beta@beta.com");
+        clientDao.insert(TestEntities.newClient(acmeName, "a@acme.com"));
+        clientDao.insert(TestEntities.newClient(betaName, "beta@beta.com"));
         em.clear();
 
         List<Client> out = clientDao.searchByParams(null, null, "beta@", 0, 10);
@@ -139,9 +141,9 @@ class ClientDaoTest extends AbstractDaoTest {
 
     @Test
     void getCountWhenNameFilter() {
-        testFactory.createClient("Acme One", "a1@acme.com");
-        testFactory.createClient("Acme Two", "a2@acme.com");
-        testFactory.createClient(betaName, "b@beta.com");
+        clientDao.insert(TestEntities.newClient("Acme One", "a1@acme.com"));
+        clientDao.insert(TestEntities.newClient("Acme Two", "a2@acme.com"));
+        clientDao.insert(TestEntities.newClient(betaName, "b@beta.com"));
         em.clear();
 
         long count = clientDao.getCount(null, "Acme", null);

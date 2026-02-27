@@ -9,10 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 
@@ -30,8 +30,7 @@ class AuthApiTest {
     @Mock
     private UserDao userDao;
 
-    @Captor
-    private ArgumentCaptor<User> userCaptor;
+    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private String email;
     private String password;
@@ -42,18 +41,14 @@ class AuthApiTest {
         password = "pass123";
     }
 
-    // ---------- Helpers (unit-test safe) ----------
-
-    private User signupUser(String email, String rawPassword) throws ApiException {
-        when(userDao.findByEmail(email)).thenReturn(Optional.empty());
-        return authApi.signup(email, rawPassword);
+    private User userWithHash(Integer id, String email, String rawPassword, UserRole role) {
+        User u = new User();
+        u.setId(id);
+        u.setEmail(email);
+        u.setRole(role);
+        u.setPasswordHash(encoder.encode(rawPassword));
+        return u;
     }
-
-    private void stubUserFoundByEmail(String email, User user) {
-        when(userDao.findByEmail(email)).thenReturn(Optional.of(user));
-    }
-
-    // ---------- Tests ----------
 
     @Test
     void signupInsertsUserWithOperatorRoleAndHashedPassword() throws Exception {
@@ -61,6 +56,7 @@ class AuthApiTest {
 
         User created = authApi.signup(email, password);
 
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userDao).insert(userCaptor.capture());
         User inserted = userCaptor.getValue();
 
@@ -69,9 +65,9 @@ class AuthApiTest {
 
         assertEquals(email, inserted.getEmail());
         assertEquals(UserRole.OPERATOR, inserted.getRole());
-
         assertNotNull(inserted.getPasswordHash());
         assertNotEquals(password, inserted.getPasswordHash());
+        assertTrue(encoder.matches(password, inserted.getPasswordHash()));
     }
 
     @Test
@@ -88,13 +84,15 @@ class AuthApiTest {
 
     @Test
     void validateLoginReturnsUserWhenCredentialsCorrect() throws Exception {
-        User signedUp = signupUser(email, password);
-        stubUserFoundByEmail(email, signedUp);
+        User u = userWithHash(10, email, password, UserRole.OPERATOR);
+        when(userDao.findByEmail(email)).thenReturn(Optional.of(u));
 
         User out = authApi.validateLogin(email, password);
 
-        assertNotNull(out);
-        assertEquals(email, out.getEmail());
+        assertSame(u, out);
+        verify(userDao).findByEmail(email);
+        verify(userDao, never()).insert(any());
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
@@ -106,16 +104,20 @@ class AuthApiTest {
 
         assertTrue(ex.getMessage().contains(INVALID_CREDENTIALS.value()));
         assertTrue(ex.getMessage().contains(missingEmail));
+        verify(userDao).findByEmail(missingEmail);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
-    void validateLoginThrowsWhenPasswordIncorrect() throws Exception {
-        String raw = "correct";
-        User u = signupUser(email, raw);
-        stubUserFoundByEmail(email, u);
+    void validateLoginThrowsWhenPasswordIncorrect() {
+        User u = userWithHash(10, email, "correct", UserRole.OPERATOR);
+        when(userDao.findByEmail(email)).thenReturn(Optional.of(u));
 
         ApiException ex = assertThrows(ApiException.class, () -> authApi.validateLogin(email, "wrong"));
         assertEquals(INVALID_CREDENTIALS.value(), ex.getMessage());
+
+        verify(userDao).findByEmail(email);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
@@ -127,6 +129,8 @@ class AuthApiTest {
         User out = authApi.getById(10);
 
         assertSame(u, out);
+        verify(userDao).selectById(10);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
@@ -137,6 +141,9 @@ class AuthApiTest {
 
         assertTrue(ex.getMessage().contains(USER_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("99"));
+
+        verify(userDao).selectById(99);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
@@ -145,9 +152,7 @@ class AuthApiTest {
         String current = "oldPass";
         String next = "newPass";
 
-        User u = signupUser(email, current);
-        u.setId(userId);
-
+        User u = userWithHash(userId, email, current, UserRole.OPERATOR);
         when(userDao.selectById(userId)).thenReturn(u);
 
         String oldHash = u.getPasswordHash();
@@ -155,7 +160,11 @@ class AuthApiTest {
         authApi.changePassword(userId, current, next);
 
         assertNotEquals(oldHash, u.getPasswordHash());
-        assertNotEquals(next, u.getPasswordHash());
+        assertTrue(encoder.matches(next, u.getPasswordHash()));
+        assertFalse(encoder.matches(current, u.getPasswordHash()));
+
+        verify(userDao).selectById(userId);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
@@ -166,18 +175,21 @@ class AuthApiTest {
 
         assertTrue(ex.getMessage().contains(USER_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("5"));
+
+        verify(userDao).selectById(5);
+        verifyNoMoreInteractions(userDao);
     }
 
     @Test
-    void changePasswordThrowsWhenCurrentPasswordIncorrect() throws Exception {
+    void changePasswordThrowsWhenCurrentPasswordIncorrect() {
         int userId = 2;
-
-        User u = signupUser(email, "right");
-        u.setId(userId);
-
+        User u = userWithHash(userId, email, "right", UserRole.OPERATOR);
         when(userDao.selectById(userId)).thenReturn(u);
 
         ApiException ex = assertThrows(ApiException.class, () -> authApi.changePassword(userId, "wrong", "new"));
         assertEquals(CURRENT_PASSWORD_INCORRECT.value(), ex.getMessage());
+
+        verify(userDao).selectById(userId);
+        verifyNoMoreInteractions(userDao);
     }
 }

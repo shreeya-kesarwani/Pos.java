@@ -5,7 +5,6 @@ import com.pos.dao.InventoryDao;
 import com.pos.exception.ApiException;
 import com.pos.model.form.InventoryForm;
 import com.pos.pojo.Inventory;
-import com.pos.setup.UnitTestFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +16,6 @@ import java.util.List;
 
 import static com.pos.model.constants.ErrorMessages.*;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -32,10 +30,23 @@ class InventoryApiTest {
     private Integer productId;
     private Inventory existingInv;
 
+    private Inventory inv(Integer productId, Integer qty) {
+        Inventory i = new Inventory();
+        i.setProductId(productId);
+        i.setQuantity(qty);
+        return i;
+    }
+
+    private InventoryForm invForm(String barcode) {
+        InventoryForm f = new InventoryForm();
+        f.setBarcode(barcode);
+        return f;
+    }
+
     @BeforeEach
     void setupData() {
         productId = 5;
-        existingInv = UnitTestFactory.inventory(productId, 10);
+        existingInv = inv(productId, 10);
     }
 
     @Test
@@ -67,6 +78,7 @@ class InventoryApiTest {
         ApiException ex = assertThrows(ApiException.class, () -> inventoryApi.getCheck(99));
         assertTrue(ex.getMessage().contains(INVENTORY_NOT_FOUND.value()));
         assertTrue(ex.getMessage().contains("99"));
+
         verify(inventoryDao).selectById(99);
         verifyNoMoreInteractions(inventoryDao);
     }
@@ -100,6 +112,7 @@ class InventoryApiTest {
         ApiException ex = assertThrows(ApiException.class, () -> inventoryApi.getCheckByProductId(productId));
         assertTrue(ex.getMessage().contains(INVENTORY_NOT_FOUND_FOR_PRODUCT.value()));
         assertTrue(ex.getMessage().contains(String.valueOf(productId)));
+
         verify(inventoryDao).selectByProductId(productId);
         verifyNoMoreInteractions(inventoryDao);
     }
@@ -114,7 +127,7 @@ class InventoryApiTest {
     @Test
     void findByProductIdsShouldCallDaoWhenIdsPresent() {
         List<Integer> ids = List.of(1, 2);
-        List<Inventory> expected = List.of(UnitTestFactory.inventory(1, 1));
+        List<Inventory> expected = List.of(inv(1, 1));
 
         when(inventoryDao.findByProductIds(ids, 1, 20)).thenReturn(expected);
 
@@ -127,8 +140,7 @@ class InventoryApiTest {
 
     @Test
     void addShouldInsertWhenNoExistingInventoryForProduct() throws ApiException {
-        Inventory incoming = UnitTestFactory.inventory(10, 5);
-
+        Inventory incoming = inv(10, 5);
         when(inventoryDao.selectByProductIds(List.of(10))).thenReturn(List.of());
 
         inventoryApi.add(List.of(incoming));
@@ -140,8 +152,8 @@ class InventoryApiTest {
 
     @Test
     void addShouldUpdateExistingQuantityWhenExists() throws ApiException {
-        Inventory incoming = UnitTestFactory.inventory(10, 9);
-        Inventory existing = UnitTestFactory.inventory(10, 1);
+        Inventory incoming = inv(10, 9);
+        Inventory existing = inv(10, 1);
 
         when(inventoryDao.selectByProductIds(List.of(10))).thenReturn(List.of(existing));
 
@@ -155,15 +167,16 @@ class InventoryApiTest {
 
     @Test
     void addShouldHandleMultipleInventoriesMixedInsertAndUpdate() throws ApiException {
-        Inventory inv1 = UnitTestFactory.inventory(1, 5);
-        Inventory inv2 = UnitTestFactory.inventory(2, 7);
-        Inventory existing2 = UnitTestFactory.inventory(2, 1);
+        Inventory inv1 = inv(1, 5);
+        Inventory inv2 = inv(2, 7);
+        Inventory existing2 = inv(2, 1);
 
         when(inventoryDao.selectByProductIds(List.of(1, 2))).thenReturn(List.of(existing2));
 
         inventoryApi.add(List.of(inv1, inv2));
 
         assertEquals(7, existing2.getQuantity());
+
         verify(inventoryDao).selectByProductIds(List.of(1, 2));
         verify(inventoryDao).insert(inv1);
         verify(inventoryDao, never()).insert(inv2);
@@ -190,7 +203,7 @@ class InventoryApiTest {
 
     @Test
     void reduceInventoryShouldThrowWhenInsufficientInventory() {
-        Inventory existing = UnitTestFactory.inventory(productId, 2);
+        Inventory existing = inv(productId, 2);
         when(inventoryDao.selectByProductId(productId)).thenReturn(existing);
 
         ApiException ex = assertThrows(ApiException.class, () -> inventoryApi.reduceInventory(productId, 3));
@@ -203,7 +216,7 @@ class InventoryApiTest {
 
     @Test
     void reduceInventoryShouldReduceQuantityWhenSufficient() throws ApiException {
-        Inventory existing = UnitTestFactory.inventory(productId, 10);
+        Inventory existing = inv(productId, 10);
         when(inventoryDao.selectByProductId(productId)).thenReturn(existing);
 
         inventoryApi.reduceInventory(productId, 3);
@@ -240,10 +253,10 @@ class InventoryApiTest {
 
     @Test
     void extractBarcodesShouldTrimAndFilterNullEmpty() {
-        InventoryForm f1 = UnitTestFactory.inventoryForm(" A ");
-        InventoryForm f2 = UnitTestFactory.inventoryForm(null);
-        InventoryForm f3 = UnitTestFactory.inventoryForm("   ");
-        InventoryForm f4 = UnitTestFactory.inventoryForm("B");
+        InventoryForm f1 = invForm(" A ");
+        InventoryForm f2 = invForm(null);
+        InventoryForm f3 = invForm("   ");
+        InventoryForm f4 = invForm("B");
 
         List<String> out = InventoryApi.extractBarcodes(List.of(f1, f2, f3, f4));
 
@@ -258,10 +271,10 @@ class InventoryApiTest {
 
     @Test
     void extractDistinctProductIdsShouldFilterNullAndDistinct() {
-        Inventory i1 = UnitTestFactory.inventory(1, 1);
-        Inventory i2 = UnitTestFactory.inventory(1, 2);
-        Inventory i3 = UnitTestFactory.inventory(null, 3);
-        Inventory i4 = UnitTestFactory.inventory(2, 4);
+        Inventory i1 = inv(1, 1);
+        Inventory i2 = inv(1, 2);
+        Inventory i3 = inv(null, 3);
+        Inventory i4 = inv(2, 4);
 
         List<Integer> out = InventoryApi.extractDistinctProductIds(List.of(i1, i2, i3, i4));
 

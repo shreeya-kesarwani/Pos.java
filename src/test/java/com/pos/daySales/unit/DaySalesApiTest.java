@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,12 +29,6 @@ class DaySalesApiTest {
 
     @Mock
     private DaySalesDao daySalesDao;
-
-    @Captor
-    private ArgumentCaptor<ZonedDateTime> zdtCaptor;
-
-    @Captor
-    private ArgumentCaptor<DaySales> daySalesCaptor;
 
     private static final ZoneId IST = ZoneId.of("Asia/Kolkata");
     private static final ZoneId UTC = ZoneId.of("UTC");
@@ -64,7 +57,9 @@ class DaySalesApiTest {
         assertNotNull(out);
         assertTrue(out.isEmpty());
 
+        ArgumentCaptor<ZonedDateTime> zdtCaptor = ArgumentCaptor.forClass(ZonedDateTime.class);
         verify(daySalesDao).selectInRange(zdtCaptor.capture(), zdtCaptor.capture());
+
         List<ZonedDateTime> captured = zdtCaptor.getAllValues();
         ZonedDateTime start = captured.get(0);
         ZonedDateTime end = captured.get(1);
@@ -98,7 +93,9 @@ class DaySalesApiTest {
 
         daySalesApi.calculateDaySales();
 
+        ArgumentCaptor<ZonedDateTime> zdtCaptor = ArgumentCaptor.forClass(ZonedDateTime.class);
         verify(daySalesDao).selectInvoicedSalesAggregatesForDay(zdtCaptor.capture(), zdtCaptor.capture());
+
         List<ZonedDateTime> captured = zdtCaptor.getAllValues();
         ZonedDateTime start = captured.get(0);
         ZonedDateTime end = captured.get(1);
@@ -108,7 +105,9 @@ class DaySalesApiTest {
         assertEquals(start.toLocalDate().atStartOfDay(IST), start);
         assertEquals(start.plusDays(1), end);
 
+        ArgumentCaptor<DaySales> daySalesCaptor = ArgumentCaptor.forClass(DaySales.class);
         verify(daySalesDao).insert(daySalesCaptor.capture());
+
         DaySales inserted = daySalesCaptor.getValue();
 
         assertNotNull(inserted);
